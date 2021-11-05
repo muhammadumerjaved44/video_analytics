@@ -1,0 +1,12 @@
+fastapi
+fastapi-sqlalchemy
+PyMySQL
+SQLAlchemy
+uvicorn[standard]
+python-decouple
+behave
+yml
+opencv-python
+cython
+wget
+decord
