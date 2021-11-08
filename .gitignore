@@ -47,4 +47,11 @@ Thumbs.db
 *.flv
 *.mov
 *.wmv
+*.webm
+*.zip
 
+# cache files
+pd-frames/__pycache__
+
+# enviorment file
+.env
