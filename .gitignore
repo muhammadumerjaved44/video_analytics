@@ -49,6 +49,8 @@ Thumbs.db
 *.wmv
 *.webm
 *.zip
+*.jpg
+*.jpeg
 
 # cache files
 pd-frames/__pycache__

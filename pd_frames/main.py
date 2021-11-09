@@ -1,10 +1,11 @@
 import ntpath
 import os
 from pathlib import Path
+from decouple import config
 
 import uvicorn
 import wget
-from fastapi import FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.openapi.utils import get_openapi
 from frames import video_to_frames
 
@@ -15,7 +16,7 @@ app = FastAPI()
 
 
 @app.post("/local_decord", status_code=200, tags=["decord"])
-async def get_frames(video_path, frames_dir, overwrite:bool =False , every: int = 1):
+async def get_frames(video_path, frames_dir, background_tasks: BackgroundTasks, overwrite:bool =False , every: int = 1):
     video_path = video_path.strip()
     frames_dir = frames_dir.strip()
     if not video_path or len(video_path) == 0:
@@ -26,21 +27,18 @@ async def get_frames(video_path, frames_dir, overwrite:bool =False , every: int 
         if not os.path.exists(main_file_path):
             raise HTTPException(status_code=404, detail="video file path is invalid / local file not found")
         try:
-            is_done = video_to_frames(video_path, frames_dir, overwrite, every)
-            if is_done:
-                pass
-            else:
-                raise HTTPException(status_code=404, detail="framing process faild")
+            background_tasks.add_task(video_to_frames,video_path, frames_dir, overwrite, every)
+
         except FileNotFoundError:
             raise HTTPException(status_code=404, detail="video file path is invalid / local file not found")
 
         return {
-            'response': is_done,
+            'response': 'soon the video will be processed',
             'file_name': Path(main_file_path).name,
         }
 
 @app.post("/online_decord", tags=["decord"])
-async def get_frames(video_path, frames_dir, overwrite:bool =False , every: int = 1):
+async def get_frames(video_path, frames_dir, background_tasks: BackgroundTasks, overwrite:bool =False , every: int = 1):
     video_path = video_path.strip()
 
     # video_path ='https://file-examples-com.github.io/uploads/2017/04/file_example_MP4_1280_10MG.mp4'
@@ -60,15 +58,13 @@ async def get_frames(video_path, frames_dir, overwrite:bool =False , every: int 
         except:
             raise HTTPException(status_code=404, detail="link not working on server or expire")
     try:
-        is_done = video_to_frames(full_path, frames_dir, overwrite, every)
-        if not is_done:
-            raise HTTPException(status_code=404, detail="framing process faild")
+        background_tasks.add_task(video_to_frames,video_path, frames_dir, overwrite, every)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="video file path is invalid / local file not found")
 
 
     return {
-        'response': is_done,
+        'response': 'soon the video will be processed',
         'file_name': file_name,
     }
 
@@ -112,4 +108,5 @@ app.openapi = custom_openapi
 
 if __name__ == "__main__":
     # $ uvicorn main:app --reload
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = config('FASTAPI_LOCAL_PORT', cast=int)
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload="True")
