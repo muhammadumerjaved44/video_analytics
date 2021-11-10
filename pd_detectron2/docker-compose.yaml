@@ -1,0 +1,22 @@
+version: '3.0'
+
+# list of services in the Docker
+services:
+
+  # detectron2 container configuration
+  pd-detectron2:
+    container_name: pd-detectron2
+    # image:
+    build: .
+    stdin_open: true
+    tty: true
+    restart: always
+    command: uvicorn main:app --host 0.0.0.0 --reload
+    volumes:
+      - .:/code
+    ports:
+      - '${FASTAPI_LOCAL_PORT}:${FASTAPI_DOCKER_PORT}'
+
+    environment:
+      # detectron2 env
+      POINT_DUTY_ENV: ${POINT_DUTY_ENV}

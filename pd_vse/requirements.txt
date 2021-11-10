@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+python-decouple
+behave
+yml
+opencv-python
+cython
+wget
+pymongo
+schedule
+kafka-python
+aiohttp
+httpx>=0.18.2
