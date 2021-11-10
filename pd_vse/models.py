@@ -1,12 +1,12 @@
-from database import engine, SessionLocal
+from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 
-ses = SessionLocal()
-async def get_frames():
+
+# ses = SessionLocal()
+async def get_frames(db: Session):
     # data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'file_path':'umer'}
-    sess =  SessionLocal()
-    with sess.connection() as con:
-        statement = text("""SELECT * from table_2""")
+    with db.connection() as con:
+        statement = text("""SELECT * from table_2 WHERE is_processed=0""")
 
         try:
             results = con.execute(statement)
@@ -16,3 +16,32 @@ async def get_frames():
             print('db connection not build / insertion failed')
 
     return data
+
+
+async def get_predictions(db: Session):
+    # data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'file_path':'umer'}
+    with db.connection() as con:
+        statement = text("""SELECT * from table_1""")
+
+        try:
+            results = con.execute(statement)
+            data = results.fetchall()
+            print('please wait fetching frames')
+        except:
+            print('db connection not build / insertion failed')
+
+    return data
+
+async def get_counts(db: Session):
+    # data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'file_path':'umer'}
+    with db.connection() as con:
+        statement = text("""SELECT count(*) from table_1""")
+
+        try:
+            results = con.execute(statement)
+            data = results.fetchall()
+            print('please wait counting frames')
+        except:
+            print('db connection not build / insertion failed')
+
+    return {'count': data[0][0]}

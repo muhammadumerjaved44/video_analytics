@@ -10,7 +10,8 @@ import torch
 import uvicorn
 from decouple import config
 from detectron import pd_detectron2
-from fastapi import Depends, FastAPI, Header, HTTPException, Response, BackgroundTasks
+from fastapi import (BackgroundTasks, Depends, FastAPI, Header, HTTPException,
+                     Response)
 from fastapi.openapi.utils import get_openapi
 
 # from settings import Settings, get_settings

@@ -9,7 +9,9 @@ setup_logger()
 torch.cuda.empty_cache()
 
 import asyncio
+import json
 import os
+from pathlib import Path
 
 import cv2
 # import some common libraries
@@ -22,11 +24,9 @@ from detectron2.config import get_cfg
 from detectron2.data import MetadataCatalog
 from detectron2.engine import DefaultPredictor
 from fastapi import HTTPException
+from models import insert_object, update_frame_flags
 # from detectron2.utils.visualizer import Visualizer
 from pdPredict import Visualizer
-from models import insert_object, update_frame_flags
-import json
-from pathlib import Path
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
