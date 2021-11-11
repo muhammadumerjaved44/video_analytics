@@ -15,6 +15,7 @@ import cv2
 # import some common libraries
 import numpy as np
 import wget
+from decouple import config
 # import some common detectron2 utilities
 from detectron2 import model_zoo
 from detectron2.config import get_cfg
@@ -23,21 +24,23 @@ from detectron2.engine import DefaultPredictor
 from fastapi import HTTPException
 # from detectron2.utils.visualizer import Visualizer
 from pdPredict import Visualizer
-from models import insert_object
+from models import insert_object, update_frame_flags
 import json
+from pathlib import Path
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-async def insert_detectron_object(data):
+async def insert_detectron_object(frame_no, video_name, data):
     final_object  = {
         'data': [{"object": v1.split(" ")[0],"confidence": v1.split(" ")[1], 'class_lables': v2 }  for v1, v2 in  zip(data[0][3], data[0][2])],
         'class_lable_list' : data[0][2],
         # 'bbox_tensor' : data[0][0],
     }
-    response = {'frame_no': '2', 'video_name': 'umer', 'detectron_object': json.dumps(final_object)}
+    response = {'frame_no': frame_no, 'video_name': video_name, 'detectron_object': json.dumps(final_object)}
     await insert_object(response)
+    update_data = {'frame_no':frame_no, 'video_name': video_name, 'is_processed':1}
+    await update_frame_flags(update_data)
     # return response
-    # 
 
 async def get_image(main_file_path):
     im = cv2.imread(main_file_path)
@@ -58,7 +61,10 @@ async def load_configuration():
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5  # set threshold for this model
     # Find a model from detectron2's model zoo. You can use the https://dl.fbaipublicfiles... url as well
     cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml")
-    cfg.MODEL.DEVICE = "cuda"
+    if not config('DOCKER_ENABLE'):
+        cfg.MODEL.DEVICE = "cuda"
+    else:
+        cfg.MODEL.DEVICE = "cpu"
     print('model loaded done')
     return cfg
 
@@ -70,11 +76,16 @@ async def image_predictor(cfg, im):
 
     v = Visualizer(im[:, :, ::-1], MetadataCatalog.get(cfg.DATASETS.TRAIN[0]), scale=1.2)
     # out = v.draw_instance_predictions(outputs["instances"].to("cuda"))
-    response = await v.get_only_lables(outputs["instances"].to("cuda"))
+    if not config('DOCKER_ENABLE'):
+        response = await v.get_only_lables(outputs["instances"].to("cuda"))
+    else:
+        response = await v.get_only_lables(outputs["instances"].to("cpu"))
 
     return response
 
 async def pd_detectron2(main_file_path):
+    frame_no = Path(main_file_path).parts[-1].split('_')[-1].split('.')[0]
+    video_name = Path(main_file_path).parts[-2]
     confifuration_and_data = await asyncio.gather(
         asyncio.create_task(load_configuration()),
         asyncio.create_task(get_image(main_file_path))
@@ -85,7 +96,7 @@ async def pd_detectron2(main_file_path):
 
     await asyncio.gather(
         asyncio.create_task(
-            insert_detectron_object(results)
+            insert_detectron_object(frame_no, video_name, results)
         )
     )
     if len(results) > 0:

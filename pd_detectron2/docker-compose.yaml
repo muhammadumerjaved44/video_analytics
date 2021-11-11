@@ -1,4 +1,4 @@
-version: '3.0'
+version: '3.4'
 
 # list of services in the Docker
 services:
@@ -14,6 +14,7 @@ services:
     command: uvicorn main:app --host 0.0.0.0 --reload
     volumes:
       - .:/code
+      - '${FRAMES_DIR_MOUNT_PATH}:/code/frame_dir'
     ports:
       - '${FASTAPI_LOCAL_PORT}:${FASTAPI_DOCKER_PORT}'
 
