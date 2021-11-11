@@ -2,31 +2,26 @@ version: '3.0'
 
 # list of services in the Docker
 services:
-  # point-duty-phpMyAdmin for local db container configuration
-  point-duty-phpMyAdmin:
-    image: phpmyadmin/phpmyadmin
-    container_name: point-duty-phpMyAdmin
-    environment:
-      # PMA_ARBIRARY: 1
-      PMA_HOSTS: ${PMA_HOSTS}
-      PMA_USER: ${PMA_USER}
-      PMA_PASSWORD: ${PMA_PASSWORD}
-    ports:
-      - ${PMA_LOCAL_PORT}:${PMA_DOCKER_PORT}
+  adminer:
+    image: adminer
+    restart: always
     depends_on:
-      - point-duty-mariaDB
-
-  # Maria db container configuration
-  point-duty-mariaDB:
-    container_name: point-duty-mariaDB
-    image: mariadb:10.3.8
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-    volumes:
-      - ./database/:/docker-entrypoint-initdb.d
-    command: mysqld --max_allowed_packet=512M --sql_mode="NO_ENGINE_SUBSTITUTION"
+      - point-duty-mssql
     ports:
-      - ${MYSQL_LOCAL_PORT}:${MYSQL_DOCKER_PORT}
+      - "${ADMINER_LOCAL_PORT}:${ADMINER_DOCKER_PORT}"
+
+  point-duty-mssql:
+    build: .
+    image: mcmoe/mssqldocker:v2017.CU24.0
+    environment:
+      ACCEPT_EULA: Y
+      SA_PASSWORD: ${SA_PASSWORD}
+      MSSQL_DB: ${MSSQL_DB}
+      MSSQL_USER: ${MSSQL_ROOT_USERNAME}
+      MSSQL_PASSWORD: ${MSSQL_ROOT_PASSWORD}
+    ports:
+      - "${MSSQL_LOCAL_PORT}:${MSSQL_DOCKER_PORT}"
+    container_name: point-duty-mssql
 
   #service for cache
   point-duty-redis:

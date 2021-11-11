@@ -1,7 +1,7 @@
 fastapi
 fastapi-sqlalchemy
-PyMySQL
 SQLAlchemy
+pyodbc
 uvicorn[standard]
 python-decouple
 behave

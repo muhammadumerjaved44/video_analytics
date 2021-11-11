@@ -15,10 +15,8 @@ async def insert_frames(data=None):
             VALUES (:frame_no, :video_name, :file_path, :is_processed)""")
 
         try:
-            for line in data:
-
-                con.execute(statement, **line)
-                print('please wait inserting frames')
+            con.execute(statement, data)
+            print('please wait inserting frames')
 
             return True
         except:
