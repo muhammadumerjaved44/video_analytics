@@ -1,19 +1,19 @@
-from database import engine
+from database import engine, SessionLocal
 from sqlalchemy.sql import text
 
-
-def insert_frames(data=None):
-    # data = [{ "frame_no": "The Hobbit", "video_frame": "Tolkien", 'frame_path': '/frame_rr' },
-    #         { "frame_no": "The Hobbit2", "video_frame": "Tolkien", 'frame_path': '/frame_rb' }
-    #         ]
-    with engine.connect() as con:
+ses = SessionLocal()
+async def insert_frames(data=None):
+    # data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'file_path':'umer'}
+    sess =  SessionLocal()
+    with sess.connection() as con:
 
         if data is None:
             print('data is missing to inesrt')
             return
 
-        statement = text("""INSERT INTO table_2 (frame_no, video_name)\
-            VALUES (:frame_no, :video_name)""")
+        statement = text("""INSERT INTO table_2 (frame_no, video_name, file_path)\
+            VALUES (:frame_no, :video_name, :file_path)""")
+
         try:
             for line in data:
 
