@@ -11,7 +11,6 @@ from pathlib import Path
 
 import aiohttp
 import httpx
-import models as mod
 import numpy as np
 import requests
 import uvicorn
@@ -21,7 +20,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Response
 from fastapi.openapi.utils import get_openapi
 from sqlalchemy.orm import Session
 
-# from models import get_frames, get_predictions, get_counts
+from models import get_frames, get_predictions, get_counts
 
 base_path = os.path.dirname(os.path.abspath(__file__))
 
@@ -50,13 +49,13 @@ async def my_post_calls(url):
 @app.get("/detectron2", status_code=200)
 async def trigger_detectron2API(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
 
-    results = await mod.get_frames(db)
+    results = await get_frames(db)
 
     start_time = time.time()
     # tasks = []
     for i in results:
         # print(i)
-        url = f'http://192.168.20.200:8060/local?image_path={i[3]}'
+        url = f'http://192.168.20.200:8060/server?image_path={i[3]}'
         background_tasks.add_task(my_calls, url)
 
     end_time = time.time()
@@ -79,17 +78,17 @@ async def trigger_framesAPI(video_path, frames_dir, background_tasks: Background
 
 @app.get("/all_frames", status_code=200)
 async def all_frames(db: Session = Depends(get_db)):
-    all_frames = await mod.get_frames(db)
+    all_frames = await get_frames(db)
     return {'response': all_frames}
 
 @app.get("/all_predictions", status_code=200)
 async def all_predictions(db: Session = Depends(get_db)):
-    all_data = await mod.get_predictions(db)
+    all_data = await get_predictions(db)
     return {'response': all_data}
 
 @app.get("/all_predictions_counts", status_code=200)
 async def all_predictions_counts(db: Session = Depends(get_db)):
-    all_count = await mod.get_counts(db)
+    all_count = await get_counts(db)
     return {'response': all_count}
 
 

@@ -22,6 +22,25 @@ base_path = os.path.dirname(os.path.abspath(__file__))
 
 app = FastAPI()
 
+@app.get("/server", status_code=200)
+async def get_classes(image_path, background_tasks: BackgroundTasks):
+    # verify_auth(authorization, settings)
+    if not image_path or len(image_path.strip()) == 0:
+        raise HTTPException(status_code=404, detail="image path is invalid or empty")
+    else:
+        main_file_path = os.path.realpath(image_path)
+        if not os.path.exists(main_file_path):
+            raise HTTPException(status_code=404, detail="image path is invalid / local file not found")
+        try:
+            background_tasks.add_task(pd_detectron2, main_file_path)
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail="image path is invalid / local file not found")
+
+        return {
+            'response': 'soon the predictions will be compeleted',
+            'file_name': Path(main_file_path).name,
+        }
+
 @app.get("/local", status_code=200)
 async def get_classes(image_path, background_tasks: BackgroundTasks):
     # verify_auth(authorization, settings)
