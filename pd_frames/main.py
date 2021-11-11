@@ -1,10 +1,10 @@
 import ntpath
 import os
 from pathlib import Path
-from decouple import config
 
 import uvicorn
 import wget
+from decouple import config
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.openapi.utils import get_openapi
 from frames import video_to_frames

@@ -1,29 +1,20 @@
 FROM continuumio/miniconda3
 
-# activate conda enviorment
-RUN /bin/sh -c conda activate base
-
-
-RUN pip install --upgrade pip
-
-# gcc compiler and opencv prerequisites
-RUN apt-get update -y && apt-get -y install \
-    curl \
-    nano \
-    git \
-    build-essential \
-    libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
-    sudo \
-    cmake \
-    ninja-build \
-    ffmpeg \
-    python3-opencv \
+RUN apt-get update -q -y && \
+    apt-get install -q -y --no-install-recommends \
+        build-essential \
+        manpages-dev \
+        gnupg2 \
+        curl \
+        procps \
+        subversion \
+        wget \
+        git \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# activate conda enviorment
+RUN /bin/sh -c conda activate base
 
 # mssql docker install
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
@@ -41,6 +32,7 @@ RUN apt-get install -y unixodbc-dev \
 
 WORKDIR /code
 COPY requirements.txt .
+
 
 ENV CONDA_PACKAGES="-c anaconda pyodbc"
 

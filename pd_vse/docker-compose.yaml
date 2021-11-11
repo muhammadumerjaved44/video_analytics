@@ -1,0 +1,23 @@
+version: '3.0'
+
+# list of services in the Docker
+services:
+
+  # vid_search_engin container configuration
+  pd-vid_search_engin:
+    container_name: pd-vid_search_engin
+    # image:
+    build: .
+    stdin_open: true
+    tty: true
+    restart: always
+    command: uvicorn main:app --host 0.0.0.0 --reload
+    volumes:
+      - .:/code
+    ports:
+      - '${FASTAPI_LOCAL_PORT}:${FASTAPI_DOCKER_PORT}'
+
+    environment:
+      # vid_search_engin env
+      POINT_DUTY_ENV: ${POINT_DUTY_ENV}
+

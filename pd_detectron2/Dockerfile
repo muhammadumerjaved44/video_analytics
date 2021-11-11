@@ -4,26 +4,18 @@ FROM continuumio/miniconda3
 RUN /bin/sh -c conda activate base
 
 
+RUN apt-get update -y
+
 RUN pip install --upgrade pip
 
 # gcc compiler and opencv prerequisites
-RUN apt-get update -y && apt-get -y install \
-    curl \
-    nano \
-    git \
-    build-essential \
-    libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
-    sudo \
-    cmake \
-    ninja-build \
-    ffmpeg \
-    python3-opencv \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get -y install curl nano git build-essential libglib2.0-0 libsm6 libxext6 libxrender-dev sudo cmake ninja-build ffmpeg
+RUN apt-get update && apt-get install -y python3-opencv
 
+RUN conda install pytorch torchvision torchaudio cpuonly -c pytorch
+
+# # Detectron2 prerequisites
+# RUN pip install torch==1.6.0+cpu torchvision==0.7.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
 
 # mssql docker install
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
@@ -45,5 +37,10 @@ COPY requirements.txt .
 ENV CONDA_PACKAGES="-c anaconda pyodbc"
 
 RUN conda install $CONDA_PACKAGES
+
+
+# install detectron2 torch1.9 cup version
+RUN python -m pip install detectron2 -f \
+  https://dl.fbaipublicfiles.com/detectron2/wheels/cpu/torch1.9/index.html
 
 RUN pip install -r requirements.txt
