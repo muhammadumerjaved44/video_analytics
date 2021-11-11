@@ -4,7 +4,8 @@ from pathlib import Path
 
 import uvicorn
 import wget
-from fastapi import FastAPI, HTTPException
+from decouple import config
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.openapi.utils import get_openapi
 from frames import video_to_frames
 

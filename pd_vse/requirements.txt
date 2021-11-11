@@ -1,4 +1,6 @@
 fastapi
+fastapi-sqlalchemy
+SQLAlchemy
 uvicorn[standard]
 python-decouple
 behave

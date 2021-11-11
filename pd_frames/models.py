@@ -1,4 +1,4 @@
-from database import engine, SessionLocal
+from database import SessionLocal, engine
 from sqlalchemy.sql import text
 
 ses = SessionLocal()
@@ -11,8 +11,8 @@ async def insert_frames(data=None):
             print('data is missing to inesrt')
             return
 
-        statement = text("""INSERT INTO table_2 (frame_no, video_name, file_path)\
-            VALUES (:frame_no, :video_name, :file_path)""")
+        statement = text("""INSERT INTO table_2 (frame_no, video_name, file_path, is_processed)\
+            VALUES (:frame_no, :video_name, :file_path, :is_processed)""")
 
         try:
             for line in data:
