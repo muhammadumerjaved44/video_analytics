@@ -39,8 +39,9 @@ async def insert_object(data=None):
     if data is None:
         print('data is missing to inesrt')
         # return
+    print(data)
 
-    data = {'frame_no': '2', 'video_name': 'video_1', 'ocr_object': 'my_ocr'}
+    # data = {'frame_no': '2', 'video_name': 'video_1', 'ocr_object': 'my_ocr'}
 
     statement = text("""
             IF EXISTS (SELECT * from table_1 WHERE frame_no = :frame_no and video_name = :video_name)
