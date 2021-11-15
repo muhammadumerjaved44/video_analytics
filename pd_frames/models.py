@@ -1,19 +1,17 @@
-import asyncio
-import datetime
-import os
-from io import BytesIO
-
-import cv2
 from database import SessionLocal, engine
+from sqlalchemy.sql import text
 from decouple import config
 from minio import Minio
 from minio.error import ServerError
+from io import BytesIO
 from PIL import Image
-from sqlalchemy.sql import text
+import cv2
+import datetime
+import os
+import asyncio
 
 # minio keys setup
-# host=config('MINIO_HOST', cast=str)
-host = '172.25.0.3:9000'
+host=config('MINIO_HOST', cast=str)
 access_key=config('MINIO_ACCESS_KEY', cast=str)
 secret_key=config('MINIO_SECRET_KEY', cast=str)
 bucket_name=config('MINIO_BUCKET_NAME', cast=str)
