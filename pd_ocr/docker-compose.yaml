@@ -1,0 +1,43 @@
+version: '3.0'
+
+# list of services in the Docker
+services:
+
+  # python container configuration
+  point-duty-python:
+    container_name: point-duty-python
+    # image:
+    build: .
+    stdin_open: true
+    tty: true
+    restart: always
+    command: uvicorn main:app --host 0.0.0.0 --reload
+    volumes:
+      - .:/code
+    ports:
+      - ${FASTAPI_LOCAL_PORT}:${FASTAPI_DOCKER_PORT}
+    depends_on:
+      - point-duty-deepstack
+
+    environment:
+      # python env
+      POINT_DUTY_ENV: ${POINT_DUTY_ENV}
+
+      # credentials for maria db staging
+      DB_MARIA_HOST: ${DB_MARIA_HOST}
+      DB_MARIA_PORT: ${DB_MARIA_PORT}  # user internal port
+      DB_MARIA_USERNAME: ${DB_MARIA_USERNAME}
+      DB_MARIA_PASSWORD: ${DB_MARIA_PASSWORD}
+
+
+  # point-duty-deepstack service
+  point-duty-deepstack:
+    container_name: point-duty-deepstack
+    image: deepquestai/deepstack
+    # build: .
+    ports:
+      - ${DEEPSTACK_LOCAL_PORT}:${DEEPSTACK_DOCKER_PORT}
+    environment:
+      # - VISION-DETECTION=True
+      - VISION-SCENE=True
+      # - API-KEY=""
