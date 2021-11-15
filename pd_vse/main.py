@@ -16,16 +16,20 @@ import requests
 import uvicorn
 from database import SessionLocal, engine
 from decouple import config
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Response
+from fastapi import (BackgroundTasks, Body, Depends, FastAPI, HTTPException,
+                     Request, Response)
+# from fastapi.encoders import jsonable_encoder
 from fastapi.openapi.utils import get_openapi
+from models import get_counts, get_frames, get_predictions
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
-
-from models import get_frames, get_predictions, get_counts
 
 base_path = os.path.dirname(os.path.abspath(__file__))
 
 
 app = FastAPI()
+class inputs(BaseModel):
+    image_url:str
 
 def get_db():
     db = SessionLocal()
@@ -39,29 +43,37 @@ async def my_calls(url):
     resp = resp.json()
     return resp
 
-async def my_post_calls(url):
-    resp = requests.post(url)
+async def my_post_calls(image_url):
+    # data.image_url = image_url
+    resp = requests.post('http://192.168.20.200:8060/online', json.dumps({"image_url":image_url}))
     resp = resp.json()
+    # print(resp)
     return resp
 
 # start = time.time()
 
-@app.get("/detectron2", status_code=200)
-async def trigger_detectron2API(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
 
+
+@app.post("/detectron2", status_code=200)
+async def trigger_detectron2API(background_tasks: BackgroundTasks, db: Session = Depends(get_db), ):
     results = await get_frames(db)
-
+    # print(results)
+    # return(resp)
     start_time = time.time()
-    # tasks = []
+    # # tasks = []
     for i in results:
-        # print(i)
-        url = f'http://192.168.20.200:8060/server?image_path={i[3]}'
-        background_tasks.add_task(my_calls, url)
+        print(i[3])
+        # data.image_url = i[3]
+    # url = f'http://192.168.20.200:8060/online?image_path={image_url}'
+        payload = json.dumps({"image_url":i[3]})
+        resp = requests.post('http://192.168.20.200:8060/online', payload)
+        resp = resp.json()
+        # background_tasks.add_task(my_post_calls, i[3])
 
     end_time = time.time()
     total_time = end_time-start_time
-    print(end_time-start_time)
-
+    # print(end_time-start_time)
+    # return {'result': all_frames}
     return {'Total_time': total_time, 'massage': 'prediction is initiated'}
 
 @app.get("/frames", status_code=200)

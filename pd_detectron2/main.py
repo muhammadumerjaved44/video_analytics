@@ -2,17 +2,14 @@ import asyncio
 import ntpath
 import os
 from pathlib import Path
-
-import cv2
 import numpy as np
-import requests
-import torch
 import uvicorn
 from decouple import config
-from detectron import pd_detectron2
+from detectron import pd_detectron2, pd_detectron2_cloud
 from fastapi import (BackgroundTasks, Depends, FastAPI, Header, HTTPException,
-                     Response)
+                     Request, Response)
 from fastapi.openapi.utils import get_openapi
+from pydantic import BaseModel
 
 # from settings import Settings, get_settings
 
@@ -60,43 +57,23 @@ async def get_classes(image_path, background_tasks: BackgroundTasks):
             'file_name': Path(main_file_path).name,
         }
 
-@app.get("/online")
-async def get_classes(background_tasks: BackgroundTasks, image_path: str):
 
-
+@app.post("/online")
+async def get_classes(background_tasks: BackgroundTasks, request: Request):
+    data = await request.json()
+    image_path = data['image_url']
     try:
-        hdr = {'User-Agent': 'Mozilla/5.0'}
-        response = requests.get(image_path, headers=hdr)
-        if response.status_code != 200:
-            pass
-            print('error on response')
-            return {'status': response.status_code}
+        if not image_path or len(image_path.strip()) == 0:
+            raise HTTPException(status_code=404, detail="image path is invalid or empty")
         else:
-            print('all good')
-            # img = await url_to_image(response)
-            # image = np.asarray(bytearray(response.content), dtype="uint8")
-            # img = cv2.imdecode(image, cv2.IMREAD_COLOR)
+            background_tasks.add_task(pd_detectron2_cloud, image_path)
+
+            return {
+                'response': 'soon the predictions will be compeleted',
+                'file_name': image_path,
+            }
     except:
-        return {'massage': 'invalid image format in URL'}
-
-
-    if not image_path:
-        return {'massage': 'No text found on image'}
-    else:
-        # predictions = await main(im[0])
-        # predictions = await asyncio.gather(
-        #     asyncio.create_task(
-        #         pd_detectron2(img)
-        #         )
-        #     )
-        # print(predictions)
-        # predictions = pd_detectron2(img)
-
-
-        return {
-            'response': 'predictions',
-            'file_name': Path(image_path).name,
-        }
+        print('image not processed for some reason')
 
 def custom_openapi():
     if app.openapi_schema:

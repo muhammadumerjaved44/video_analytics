@@ -10,3 +10,5 @@ opencv-python
 cython
 wget
 decord
+minio
+Pillow

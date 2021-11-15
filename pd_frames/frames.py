@@ -5,27 +5,26 @@ import os
 import cv2  # still used to save images out
 from decord import VideoReader, cpu, gpu
 # import local funciton here
-from models import insert_frames
+from models import insert_frames, upload_frames
+
+# async def create_path(new_video_dir, frames_dir, video_name, frame_no):
+#     # upload_frames(frame, frame_name, bucket_name)
+#     frame_name = f"image_{frame_no}.jpg"
+#     save_path = os.path.join(new_video_dir,
+#                              frames_dir,
+#                              video_name,
+#                              frame_name)
+#     return save_path
+
+# async def save_image(save_path, frame):
+#     cv2.imwrite(save_path,
+#             cv2.cvtColor(
+#                 frame.asnumpy(),
+#                 cv2.COLOR_RGB2BGR)
+#             )
 
 
-async def create_path(new_video_dir, frames_dir, video_name, frame_no):
-    frame_name = f"image_{frame_no}.jpg"
-    save_path = os.path.join(str(os.getcwd()),
-                             new_video_dir,
-                             frames_dir,
-                             video_name,
-                             frame_name)
-    return save_path
-
-async def save_image(save_path, frame):
-    cv2.imwrite(save_path,
-            cv2.cvtColor(
-                frame.asnumpy(),
-                cv2.COLOR_RGB2BGR)
-            )
-
-
-async def extract_frames(new_video_dir, video_path, frames_dir, overwrite=False, start=-1, end=-1, every=1):
+async def extract_frames(video_path, frames_dir, overwrite=False, start=-1, end=-1, every=1):
     """
     Extract frames from a video using decord's VideoReader
     :param video_path: path of the video
@@ -68,22 +67,25 @@ async def extract_frames(new_video_dir, video_path, frames_dir, overwrite=False,
             frame_no = str(special_index)
 
             # create async save path rutine call
-            save_path = await asyncio.gather(
-                    asyncio.create_task(create_path(new_video_dir, frames_dir, video_name, frame_no))
-                    )
-            save_path= save_path[0]
+            # save_path = await asyncio.gather(
+            #         asyncio.create_task(create_path(new_video_dir, frames_dir, video_name, frame_no))
+            #         )
+            # save_path= save_path[0]
 
             # if it doesn't exist or we want to overwrite anyways
-            if not os.path.exists(save_path) or overwrite:
+            print('enter in loop')
+            if not overwrite:
+                print('enter in if not overwrite')
 
-                # insert into db
-                results = {"frame_no": frame_no, "video_name": video_name, "file_path": save_path, 'is_processed': 0}
+                # # insert into db
+                save_path = await asyncio.gather(
+                    asyncio.create_task(upload_frames(video_name, frame, frame_no))
+                )
 
+                results = {"frame_no": frame_no, "video_name": video_name, "file_path": save_path[0], 'is_processed': 0}
                 await asyncio.gather(
-                    asyncio.create_task(save_image(save_path, frame)),
                     asyncio.create_task(insert_frames(results))
                     )
-
                 saved_count += 1  # increment our counter by one
                 special_index = special_index+1
                 max_index = special_index-1
@@ -98,28 +100,29 @@ async def extract_frames(new_video_dir, video_path, frames_dir, overwrite=False,
 
             frame = vr[index]  # read an image from the capture
             # print(frame)
-
+            print('else loop')
             if index % every == 0:  # if this is a frame we want to write out based on the 'every' argument
                 frame_no = str(special_index)
 
                 # create async save path rutine call
-                save_path = await asyncio.gather(
-                    asyncio.create_task(create_path(new_video_dir, frames_dir, video_name, frame_no))
-                    )
-                save_path= save_path[0]
+                # save_path = await asyncio.gather(
+                #     asyncio.create_task(create_path(new_video_dir, frames_dir, video_name, frame_no))
+                #     )
+                # save_path= save_path[0]
 
                 # if it doesn't exist or we want to overwrite anyways
-                if not os.path.exists(save_path) or overwrite:
-                    # print("Saving",save_path)
-
-                    # save the extracted image
-
-                    results = {"frame_no": frame_no, "video_name": video_name, "file_path": save_path, 'is_processed': 0}
-
-                    await asyncio.gather(
-                        asyncio.create_task(save_image(save_path, frame)),
-                        asyncio.create_task(insert_frames(results))
+                if not overwrite:
+                    print('enter in else not overwrite')
+                    # save_path = upload_frames(video_name, frame, frame_no)
+                    save_path = await asyncio.gather(
+                        asyncio.create_task(upload_frames(video_name, frame, frame_no))
                     )
+                    print(save_path)
+
+                    results = {"frame_no": frame_no, "video_name": video_name, "file_path": save_path[0], 'is_processed': 0}
+                    await asyncio.gather(
+                        asyncio.create_task(insert_frames(results))
+                        )
 
                     saved_count += 1  # increment our counter by one
                     special_index = special_index+1
@@ -144,12 +147,12 @@ async def video_to_frames(video_path, frames_dir, overwrite=False, every=1):
     frames_dir = os.path.normpath(frames_dir)
     # get the video path and filename from the path
     video_dir, video_name = os.path.split(video_path)
-    new_video_dir = 'frame_dir'
+
     # make directory to save frames, its a sub dir in the frames_dir with the video name
-    os.makedirs(os.path.join(new_video_dir, frames_dir, video_name), exist_ok=True)
+    os.makedirs(os.path.join(frames_dir, video_name), exist_ok=True)
 
     # let's now extract the frames
-    saved_count = await extract_frames(new_video_dir, video_path, frames_dir, every=every)
+    saved_count = await extract_frames(video_path, frames_dir, every=every)
 
     # os.path.join(frames_dir, video_name)  # when done return the directory containing the frames
     return saved_count

@@ -12,10 +12,10 @@ import asyncio
 import json
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 import cv2
 # import some common libraries
-import numpy as np
 import wget
 from decouple import config
 # import some common detectron2 utilities
@@ -24,7 +24,8 @@ from detectron2.config import get_cfg
 from detectron2.data import MetadataCatalog
 from detectron2.engine import DefaultPredictor
 from fastapi import HTTPException
-from models import insert_object, update_frame_flags
+
+from models import fetch_image_from_url, insert_object, update_frame_flags
 # from detectron2.utils.visualizer import Visualizer
 from pdPredict import Visualizer
 
@@ -46,13 +47,6 @@ async def get_image(main_file_path):
     im = cv2.imread(main_file_path)
     return im
 
-async def url_to_image(response):
-	# download the image, convert it to a NumPy array, and then read
-	# it into OpenCV format
-	image = np.asarray(bytearray(response.content), dtype="uint8")
-	image = cv2.imdecode(image, cv2.IMREAD_COLOR)
-	# return the image
-	return image
 
 async def load_configuration():
     cfg = get_cfg()
@@ -104,6 +98,27 @@ async def pd_detectron2(main_file_path):
     else:
         raise HTTPException(status_code=404, detail="text on an image not found")
 
+async def pd_detectron2_cloud(main_file_url):
+    frame_no = urlparse(main_file_url).path.split('_')[-1].split('.')[0]
+    video_name = urlparse(main_file_url).path.split('/')[-2]
+    confifuration_and_data = await asyncio.gather(
+        asyncio.create_task(load_configuration()),
+        asyncio.create_task(fetch_image_from_url(video_name, frame_no))
+        )
+    print(confifuration_and_data)
+    results = await asyncio.gather(asyncio.create_task(
+        image_predictor(confifuration_and_data[0], confifuration_and_data[1])
+        ))
+
+    await asyncio.gather(
+        asyncio.create_task(
+            insert_detectron_object(frame_no, video_name, results)
+        )
+    )
+    if len(results) > 0:
+        return results[0]
+    else:
+        raise HTTPException(status_code=404, detail="text on an image not found")
 
 
 if __name__ == "__main__":
