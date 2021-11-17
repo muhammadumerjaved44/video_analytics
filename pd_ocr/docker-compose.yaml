@@ -23,13 +23,6 @@ services:
       # python env
       POINT_DUTY_ENV: ${POINT_DUTY_ENV}
 
-      # credentials for maria db staging
-      DB_MARIA_HOST: ${DB_MARIA_HOST}
-      DB_MARIA_PORT: ${DB_MARIA_PORT}  # user internal port
-      DB_MARIA_USERNAME: ${DB_MARIA_USERNAME}
-      DB_MARIA_PASSWORD: ${DB_MARIA_PASSWORD}
-
-
   # point-duty-deepstack service
   point-duty-deepstack:
     container_name: point-duty-deepstack

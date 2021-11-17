@@ -46,13 +46,13 @@ async def upload_frames(video_name, frame, frame_no):
 
 ses = SessionLocal()
 async def insert_frames(data=None):
-    # data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'file_path':'umer'}
+    #data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'file_path':'umer', 'is_processed': 0}
     sess =  SessionLocal()
     with sess.connection() as con:
 
         if data is None:
             print('data is missing to inesrt')
-            return
+            # return
 
         statement = text("""INSERT INTO table_2 (frame_no, video_name, file_path, is_processed)\
             VALUES (:frame_no, :video_name, :file_path, :is_processed)""")
@@ -61,7 +61,7 @@ async def insert_frames(data=None):
             con.execute(statement, data)
             print('please wait inserting frames')
 
-            return True
+            # return True
         except:
             print('db connection not build / insertion failed')
-            return False
+            # return False

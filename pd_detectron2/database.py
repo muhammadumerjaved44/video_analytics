@@ -10,8 +10,8 @@ from sqlalchemy.orm import sessionmaker
 # from sqlalchemy.ext.asyncio import create_async_engine
 # from sqlalchemy.ext.asyncio import AsyncSession
 
-db_host = config('MSSQL_LOCAL_HOST', default='192.168.20.200', cast=str)
-db_port = config('MSSQL_LOCAL_PORT', default=3306, cast=int)
+db_host = config('MSSQL_LOCAL_HOST', cast=str)
+db_port = config('MSSQL_LOCAL_PORT', default=1433, cast=int)
 db_user = config('MSSQL_ROOT_USERNAME', default='root')
 db_pass = config('MSSQL_ROOT_PASSWORD', default='root')
 db_name = config('MSSQL_DB', default='point_duty')

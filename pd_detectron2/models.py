@@ -35,7 +35,7 @@ async def fetch_image_from_url(video_name, frame_no):
 
 ses = SessionLocal()
 async def insert_object(data=None):
-    # data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'detectron_object':'umer'}
+    #data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'detectron_object':'umer'}
     if data is None:
         print('data is missing to inesrt')
         # return

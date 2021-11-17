@@ -1,24 +1,29 @@
-﻿# Welcome to Point Duty OCR API
-The point duty OCR API is used to the extract the Text from the images. you pass the frame no and video name and this api will return the text in the response. and then its will instead return string into the ***table_1*** in column **ocr_object**. and also it will update the filed in the ***table_2*** column ***is_ocr_processed*** to **0 to 1**
+﻿# Welcome to Point Duty Frames API
+The point duty Frames API takes the video from the relative folder and convert them into the frames and then eventually uploaded to ***minio server*** and insert the frames information into the database using the ***rds*** connection
 
 # Files
+Make sure you have to place the video into ***video_download*** folder and relative path will be like this: `video_download/file_example_MP4_1280_10MG.mp4.mp4` while giving an input
+
     .
-    ├── big.txt
     ├── database.py
     ├── docker-compose.yaml
     ├── Dockerfile
+    ├── frames.py
     ├── main.py
     ├── models.py
-    ├── ocr.py
     ├── Readme.md
     ├── requirements.txt
-    └── spell_correction.py
+    └── video_download
+        ├── file_example_MP4_1280_10MG.mp4.mp4
+
+
 
 # Setup .Env File
 Place **.env** file relative to the **docker-compose.yaml**
 
     POINT_DUTY_ENV=development
 
+    # MSSQL_LOCAL_HOST=<Place Your Ip>
     MSSQL_LOCAL_HOST=192.168.20.200
 
     SA_PASSWORD=2astazeY
@@ -28,37 +33,30 @@ Place **.env** file relative to the **docker-compose.yaml**
     MSSQL_LOCAL_PORT=1433
     MSSQL_DOCKER_PORT=1433
 
-
-    # credentials settings for deepstak server
-    DEEPSTACK_LOCAL_PORT=5123
-    DEEPSTACK_DOCKER_PORT=5000
-
     # credentials settings for fast-api server
-    FASTAPI_LOCAL_PORT=8050
+    FASTAPI_LOCAL_PORT=8070
     FASTAPI_DOCKER_PORT=8000
 
 
     COMPOSE_HTTP_TIMEOUT=2000
 
-
-    #minio keys setup for
+    # minio keys setup for
     MINIO_HOST=192.168.20.200:9000
     MINIO_BUCKET_NAME=frames
     MINIO_ACCESS_KEY=Q3AM3UQ867SPQQA43P2F
     MINIO_SECRET_KEY=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG
 
+
 ## Run for the first time
 Open terminal relative to the **docker-compose.yml**
 `$ docker-compose up --build`
 
-Hit on the local server  
-[http://localhost:8050/docs](http://localhost:8050/docs)
+Hit on the local server
+[http://localhost:8070/docs](http://localhost:8070/docs)
 
 ## Simple Run
 Run this command in the terminal
 `$ docker-compose up`
 
-Hit on the local server 
-http://localhost:8050/docs
-
-
+Hit on the local server
+http://localhost:8070/docs
