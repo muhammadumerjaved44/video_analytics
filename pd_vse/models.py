@@ -3,6 +3,21 @@ from sqlalchemy.sql import text
 
 
 # ses = SessionLocal()
+
+async def get_OCR_frames(db: Session):
+    # data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'file_path':'umer'}
+    with db.connection() as con:
+        statement = text("""SELECT * from table_2 WHERE is_ocr_processed=0""")
+
+        try:
+            results = con.execute(statement)
+            data = results.fetchall()
+            print('please wait inserting frames')
+        except:
+            print('db connection not build / insertion failed')
+
+    return data
+
 async def get_frames(db: Session):
     # data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'file_path':'umer'}
     with db.connection() as con:

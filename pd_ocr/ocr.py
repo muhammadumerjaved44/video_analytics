@@ -188,7 +188,8 @@ async def main_ocr(main_file_url):
                 asyncio.create_task(easyocr_read(image[0], reader))
             )
     if len(simple_ouput_text) > 0:
-        return
+        simple_ouput_text = ['']
+        simple_ouput_text_oprated = ['', '', '']
     else:
        simple_ouput_text_oprated = await asyncio.gather(
                 asyncio.create_task(basic_post_processing(simple_ouput_text[0])),

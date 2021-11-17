@@ -20,7 +20,7 @@ from fastapi import (BackgroundTasks, Body, Depends, FastAPI, HTTPException,
                      Request, Response)
 # from fastapi.encoders import jsonable_encoder
 from fastapi.openapi.utils import get_openapi
-from models import get_counts, get_frames, get_predictions
+from models import get_counts, get_frames, get_predictions, get_OCR_frames
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -43,6 +43,13 @@ async def my_calls(url):
     resp = resp.json()
     return resp
 
+async def my_post_frames_calls(url):
+    # data.image_url = image_url
+    resp = requests.post(url)
+    resp = resp.json()
+    # print(resp)
+    return resp
+
 async def my_post_calls(image_url):
     # data.image_url = image_url
     resp = requests.post('http://192.168.20.200:8060/online', json.dumps({"image_url":image_url}))
@@ -52,7 +59,29 @@ async def my_post_calls(image_url):
 
 # start = time.time()
 
+my_ip = config('MY_IP')
 
+@app.post("/ocr", status_code=200)
+async def trigger_OcrAPI(background_tasks: BackgroundTasks, db: Session = Depends(get_db), ):
+    results = await get_OCR_frames(db)
+    # print(results)
+    # return(resp)
+    start_time = time.time()
+    # # tasks = []
+    for i in results:
+        print(i[3])
+        # data.image_url = i[3]
+    # url = f'http://192.168.20.200:8060/online?image_path={image_url}'
+        payload = json.dumps({"image_url":i[3]})
+        resp = requests.post(f'http://{my_ip}:8050/online', payload)
+        resp = resp.json()
+        # background_tasks.add_task(my_post_calls, i[3])
+
+    end_time = time.time()
+    total_time = end_time-start_time
+    # print(end_time-start_time)
+    # return {'result': all_frames}
+    return {'Total_time': total_time, 'massage': 'prediction is initiated'}
 
 @app.post("/detectron2", status_code=200)
 async def trigger_detectron2API(background_tasks: BackgroundTasks, db: Session = Depends(get_db), ):
@@ -66,7 +95,7 @@ async def trigger_detectron2API(background_tasks: BackgroundTasks, db: Session =
         # data.image_url = i[3]
     # url = f'http://192.168.20.200:8060/online?image_path={image_url}'
         payload = json.dumps({"image_url":i[3]})
-        resp = requests.post('http://192.168.20.200:8060/online', payload)
+        resp = requests.post(f'http://{my_ip}:8060/online', payload)
         resp = resp.json()
         # background_tasks.add_task(my_post_calls, i[3])
 
@@ -79,9 +108,9 @@ async def trigger_detectron2API(background_tasks: BackgroundTasks, db: Session =
 @app.get("/frames", status_code=200)
 async def trigger_framesAPI(video_path, frames_dir, background_tasks: BackgroundTasks, overwrite:bool=False, every:int=1):
     start_time = time.time()
-    url = f'http://192.168.20.200:8070/local_decord?video_path={video_path}&frames_dir={frames_dir}&overwrite={overwrite}&every={every}'
+    url = f'http://{my_ip}:8070/local_decord?video_path={video_path}&frames_dir={frames_dir}&overwrite={overwrite}&every={every}'
     print(url)
-    background_tasks.add_task(my_post_calls, url)
+    background_tasks.add_task(my_post_frames_calls, url)
     end_time = time.time()
     total_time = end_time-start_time
     print(total_time)
