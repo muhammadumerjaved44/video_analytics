@@ -59,11 +59,24 @@ def load_browser() -> object:
     driver = webdriver.Chrome(executable_path=os.path.realpath('chromedriver/chromedriver'), options=option, desired_capabilities=caps)
     print('local driver is running')
 
-
-
-    driver.get('https://www.tiktok.com/?is_copy_url=1&is_from_webapp=v1')
+    # driver.get('https://www.tiktok.com/?is_copy_url=1&is_from_webapp=v1')
 
 
     return driver
 
+
+def open_vpn_service():
+    import time
+    pyautogui.click(x=1834, y=80, clicks=1, interval=1, button='left')
+    time.sleep(5)
+    pyautogui.click(x=1669, y=236, clicks=1, interval=1, button='left')
+    time.sleep(5)
+    pyautogui.click(x=1775, y=639, clicks=1, interval=1, button='left')
+    time.sleep(5)
+    pyautogui.click(x=1629, y=378, clicks=1, interval=1, button='left')
+    
 driver = load_browser()
+time.sleep(10)
+open_vpn_service()
+time.sleep(2)
+driver.get('https://www.tiktok.com')
