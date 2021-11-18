@@ -16,9 +16,8 @@ app = FastAPI()
 
 
 @app.post("/local_decord", status_code=200, tags=["decord"])
-async def get_frames(video_path, frames_dir, background_tasks: BackgroundTasks, overwrite:bool =False , every: int = 1):
+async def get_frames(background_tasks: BackgroundTasks,video_path:str = None, overwrite:bool =False , every: int = 1):
     video_path = video_path.strip()
-    frames_dir = frames_dir.strip()
     if not video_path or len(video_path) == 0:
         raise HTTPException(status_code=404, detail="video file path is invalid or empty")
     else:
@@ -27,7 +26,7 @@ async def get_frames(video_path, frames_dir, background_tasks: BackgroundTasks, 
         if not os.path.exists(main_file_path):
             raise HTTPException(status_code=404, detail="video file path is invalid / local file not found")
         try:
-            background_tasks.add_task(video_to_frames,video_path, frames_dir, overwrite, every)
+            background_tasks.add_task(video_to_frames,video_path, overwrite, every)
 
         except FileNotFoundError:
             raise HTTPException(status_code=404, detail="video file path is invalid / local file not found")
@@ -37,8 +36,9 @@ async def get_frames(video_path, frames_dir, background_tasks: BackgroundTasks, 
             'file_name': Path(main_file_path).name,
         }
 
-@app.post("/online_decord", tags=["decord"])
-async def get_frames(video_path, frames_dir, background_tasks: BackgroundTasks, overwrite:bool =False , every: int = 1):
+@app.get("/online_decord", tags=["decord"])
+async def get_frames(background_tasks: BackgroundTasks,
+                     video_path=None, overwrite:bool =False , every: int = 1):
     video_path = video_path.strip()
 
     # video_path ='https://file-examples-com.github.io/uploads/2017/04/file_example_MP4_1280_10MG.mp4'
@@ -58,7 +58,7 @@ async def get_frames(video_path, frames_dir, background_tasks: BackgroundTasks, 
         except:
             raise HTTPException(status_code=404, detail="link not working on server or expire")
     try:
-        background_tasks.add_task(video_to_frames,video_path, frames_dir, overwrite, every)
+        background_tasks.add_task(video_to_frames,video_path, overwrite, every)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="video file path is invalid / local file not found")
 

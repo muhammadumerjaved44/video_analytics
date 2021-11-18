@@ -24,7 +24,7 @@ from models import insert_frames, upload_frames
 #             )
 
 
-async def extract_frames(video_path, frames_dir, overwrite=False, start=-1, end=-1, every=1):
+async def extract_frames(video_path, overwrite=False, start=-1, end=-1, every=1):
     """
     Extract frames from a video using decord's VideoReader
     :param video_path: path of the video
@@ -39,7 +39,7 @@ async def extract_frames(video_path, frames_dir, overwrite=False, start=-1, end=
     # make the paths OS (Windows) compatible
     video_path = os.path.normpath(video_path)
     # make the paths OS (Windows) compatible
-    frames_dir = os.path.normpath(frames_dir)
+    # frames_dir = os.path.normpath(frames_dir)
     max_index = 0
 
     # get the video path and filename from the path
@@ -131,7 +131,7 @@ async def extract_frames(video_path, frames_dir, overwrite=False, start=-1, end=
         return max_index  # and return the count of the images we saved
 
 
-async def video_to_frames(video_path, frames_dir, overwrite=False, every=1):
+async def video_to_frames(video_path, overwrite=False, every=1):
     """
     Extracts the frames from a video
     :param video_path: path to the video
@@ -144,15 +144,15 @@ async def video_to_frames(video_path, frames_dir, overwrite=False, every=1):
     # make the paths OS (Windows) compatible
     video_path = os.path.normpath(video_path)
     # make the paths OS (Windows) compatible
-    frames_dir = os.path.normpath(frames_dir)
+    # frames_dir = os.path.normpath(frames_dir)
     # get the video path and filename from the path
     video_dir, video_name = os.path.split(video_path)
 
     # make directory to save frames, its a sub dir in the frames_dir with the video name
-    os.makedirs(os.path.join(frames_dir, video_name), exist_ok=True)
+    # os.makedirs(os.path.join(frames_dir, video_name), exist_ok=True)
 
     # let's now extract the frames
-    saved_count = await extract_frames(video_path, frames_dir, every=every)
+    saved_count = await extract_frames(video_path, every=every)
 
     # os.path.join(frames_dir, video_name)  # when done return the directory containing the frames
     return saved_count

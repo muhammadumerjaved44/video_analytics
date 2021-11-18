@@ -38,45 +38,25 @@ def get_db():
     finally:
         db.close()
 
-async def my_calls(url):
-    resp = requests.get(url)
-    resp = resp.json()
-    return resp
-
-async def my_post_frames_calls(url):
-    # data.image_url = image_url
-    resp = requests.post(url)
-    resp = resp.json()
-    # print(resp)
-    return resp
-
-async def my_post_calls(image_url):
-    # data.image_url = image_url
-    resp = requests.post('http://192.168.20.200:8060/online', json.dumps({"image_url":image_url}))
-    resp = resp.json()
-    # print(resp)
-    return resp
 
 # start = time.time()
 
-my_ip = config('MY_IP')
+ip_address = config('MY_IP')
 
 @app.post("/ocr", status_code=200)
 async def trigger_OcrAPI(background_tasks: BackgroundTasks, db: Session = Depends(get_db), ):
     results = await get_OCR_frames(db)
-    # print(results)
-    # return(resp)
     start_time = time.time()
-    # # tasks = []
-    for i in results:
-        print(i[3])
-        # data.image_url = i[3]
-    # url = f'http://192.168.20.200:8060/online?image_path={image_url}'
-        payload = json.dumps({"image_url":i[3]})
-        resp = requests.post(f'http://{my_ip}:8050/online', payload)
-        resp = resp.json()
-        # background_tasks.add_task(my_post_calls, i[3])
 
+    api_end_point =  f'http://{ip_address}:8050/online'
+
+    async def make_api_asyc_call():
+        async with aiohttp.ClientSession(json_serialize=json.dumps) as session:
+            for result in results[0:20]:
+                image_url = result[3]
+                await session.post(api_end_point, json={"image_url":image_url})
+            # await asyncio.gather(*tasks)
+    background_tasks.add_task(make_api_asyc_call)
     end_time = time.time()
     total_time = end_time-start_time
     # print(end_time-start_time)
@@ -90,15 +70,15 @@ async def trigger_detectron2API(background_tasks: BackgroundTasks, db: Session =
     # return(resp)
     start_time = time.time()
     # # tasks = []
-    for i in results:
-        print(i[3])
-        # data.image_url = i[3]
-    # url = f'http://192.168.20.200:8060/online?image_path={image_url}'
-        payload = json.dumps({"image_url":i[3]})
-        resp = requests.post(f'http://{my_ip}:8060/online', payload)
-        resp = resp.json()
-        # background_tasks.add_task(my_post_calls, i[3])
+    api_end_point =  f'http://{ip_address}:8060/online'
 
+    async def make_api_asyc_call():
+        async with aiohttp.ClientSession(json_serialize=json.dumps) as session:
+            for result in results[0:20]:
+                image_url = result[3]
+                await session.post(api_end_point, json={"image_url":image_url})
+            # await asyncio.gather(*tasks)
+    background_tasks.add_task(make_api_asyc_call)
     end_time = time.time()
     total_time = end_time-start_time
     # print(end_time-start_time)
@@ -106,16 +86,23 @@ async def trigger_detectron2API(background_tasks: BackgroundTasks, db: Session =
     return {'Total_time': total_time, 'massage': 'prediction is initiated'}
 
 @app.get("/frames", status_code=200)
-async def trigger_framesAPI(video_path, frames_dir, background_tasks: BackgroundTasks, overwrite:bool=False, every:int=1):
+async def trigger_framesAPI(video_path, background_tasks: BackgroundTasks, overwrite:bool=False, every:int=1):
+    # video_path='video_download/sample_video.mp4'
+    # overwrite=False
+    # every=1
+    url = f'http://{ip_address}:8070/local_decord?video_path={video_path}&overwrite={overwrite}&every={every}'
+
     start_time = time.time()
-    url = f'http://{my_ip}:8070/local_decord?video_path={video_path}&frames_dir={frames_dir}&overwrite={overwrite}&every={every}'
-    print(url)
-    background_tasks.add_task(my_post_frames_calls, url)
+
+    async def make_api_asyc_call():
+        async with aiohttp.ClientSession(json_serialize=json.dumps) as session:
+                await session.post(url)
+            # await asyncio.gather(*tasks)
+    background_tasks.add_task(make_api_asyc_call)
     end_time = time.time()
     total_time = end_time-start_time
-    print(total_time)
 
-    return {'Total_time': total_time, 'values': (video_path, frames_dir, overwrite, every, url)}
+    return {'Total_time': total_time, 'values': (video_path, overwrite, every, url)}
 
 @app.get("/all_frames", status_code=200)
 async def all_frames(db: Session = Depends(get_db)):

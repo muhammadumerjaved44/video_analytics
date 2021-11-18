@@ -84,9 +84,11 @@ async def pd_detectron2(main_file_path):
         asyncio.create_task(load_configuration()),
         asyncio.create_task(get_image(main_file_path))
         )
-    results = await asyncio.gather(asyncio.create_task(
-        image_predictor(confifuration_and_data[0], confifuration_and_data[1])
-        ))
+    results = await asyncio.gather(
+        asyncio.create_task(
+            image_predictor(confifuration_and_data[0], confifuration_and_data[1])
+        )
+    )
 
     await asyncio.gather(
         asyncio.create_task(
