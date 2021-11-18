@@ -5,9 +5,12 @@ from pathlib import Path
 import uvicorn
 import wget
 from decouple import config
-from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException, UploadFile, File
 from fastapi.openapi.utils import get_openapi
 from frames import video_to_frames
+from typing import List
+from decouple import config
+from models import upload_video, insert_video
 
 base_path = os.path.dirname(os.path.abspath(__file__))
 
@@ -16,7 +19,21 @@ app = FastAPI()
 
 
 @app.post("/local_decord", status_code=200, tags=["decord"])
-async def get_frames(background_tasks: BackgroundTasks,video_path:str = None, overwrite:bool =False , every: int = 1):
+async def get_frames(background_tasks: BackgroundTasks, video_path:str = None, overwrite:bool =False , every: int = 1):
+
+    dir_name = './video_download/'
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+    file_name = Path(video_path).name+'.mp4'
+    full_path = dir_name+file_name
+    print(full_path)
+    if not os.path.exists(full_path):
+        print('downloading video on server')
+        try:
+            wget.download(video_path, full_path)
+        except:
+            raise HTTPException(status_code=404, detail="link not working on server or expire")
+
     video_path = video_path.strip()
     if not video_path or len(video_path) == 0:
         raise HTTPException(status_code=404, detail="video file path is invalid or empty")
@@ -46,8 +63,7 @@ async def get_frames(background_tasks: BackgroundTasks,
     # todo: need to fix the path issues for video location
 
     dir_name = './video_download/'
-    if not os.path.exists(dir_name):
-        os.makedirs(dir_name)
+    os.makedirs(os.path.join(dir_name), exist_ok=True)
     file_name = Path(video_path).name+'.mp4'
     full_path = dir_name+file_name
     print(full_path)
@@ -67,6 +83,28 @@ async def get_frames(background_tasks: BackgroundTasks,
         'response': 'soon the video will be processed',
         'file_name': file_name,
     }
+
+
+@app.get("/upload_decord_files", tags=["decord"])
+async def get_frames(background_tasks: BackgroundTasks, file_path):
+    dir_name = './video_download/'
+    os.makedirs(os.path.join(dir_name), exist_ok=True)
+    full_path = file_path
+    main_file_path = os.path.realpath('video_download/'+ntpath.basename(r'%s' % full_path))
+    print(main_file_path)
+    if not os.path.exists(main_file_path):
+        print('downloading video on server')
+        try:
+            wget.download(file_path, main_file_path)
+        except:
+            print('file already there')
+
+    print('umer ', os.path.relpath(main_file_path))
+    video_url = await upload_video(os.path.relpath(main_file_path))
+    print('umer  ', video_url)
+    data = {"video_name": Path(main_file_path).name, 'video_url': video_url, 'is_video_processed': 0}
+    await insert_video(data)
+    # return {"filenames": [file.filename for file in files], 'file_stream_size': [file.content_type for file in files]}
 
 
 

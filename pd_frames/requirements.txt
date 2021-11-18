@@ -12,3 +12,4 @@ wget
 decord
 minio
 Pillow
+python-multipart

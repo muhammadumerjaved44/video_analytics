@@ -32,3 +32,12 @@ CREATE TABLE point_duty.dbo.table_2 (
 	is_ocr_processed tinyint DEFAULT 0 NULL,
 	CONSTRAINT PK__table_2__3213E83F1E6B5C2C PRIMARY KEY (id)
 );
+
+-- DROP TABLE point_duty.dbo.table_3;
+
+CREATE TABLE point_duty.dbo.table_3 (
+	id int IDENTITY(1,1) NOT NULL,
+	video_name varchar(255) COLLATE Latin1_General_BIN NOT NULL,
+	is_video_processed tinyint DEFAULT 0 NULL,
+	video_url text COLLATE Latin1_General_BIN NULL
+);

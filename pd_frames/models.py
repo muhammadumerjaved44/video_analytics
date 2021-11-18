@@ -9,12 +9,50 @@ import cv2
 import datetime
 import os
 import asyncio
+from uuid import uuid4
+from pathlib import Path
 
 # minio keys setup
 host=config('MINIO_HOST', cast=str)
 access_key=config('MINIO_ACCESS_KEY', cast=str)
 secret_key=config('MINIO_SECRET_KEY', cast=str)
 bucket_name=config('MINIO_BUCKET_NAME', cast=str)
+
+async def upload_video(video_file):
+    bucket_name = 'videos'
+    minio_client = Minio(host, access_key=access_key, secret_key=secret_key, secure=False)
+    found = minio_client.bucket_exists(bucket_name)
+    if not found:
+        minio_client.make_bucket(bucket_name)
+    else:
+        print("Bucket 'videos' already exists")
+
+    try:
+        result = minio_client.fput_object(bucket_name, Path(video_file).name, video_file)
+        video_url = minio_client.presigned_get_object(bucket_name, Path(video_file).name, expires=datetime.timedelta(hours=2))
+        return video_url
+    except:
+        print('file not uploaded')
+
+async def insert_video(data=None):
+    #data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'file_path':'umer', 'is_processed': 0}
+    sess =  SessionLocal()
+    with sess.connection() as con:
+
+        if data is None:
+            print('data is missing to inesrt')
+            # return
+
+        statement = text("""INSERT INTO table_3 (video_name, video_url, is_video_processed)\
+            VALUES (:video_name, :video_url, :is_video_processed)""")
+
+        try:
+            con.execute(statement, data)
+            print('please wait inserting frames')
+
+            # return True
+        except:
+            print('db connection not build / insertion failed')
 
 async def upload_frames(video_name, frame, frame_no):
     minio_client = Minio(host, access_key=access_key, secret_key=secret_key, secure=False)
@@ -44,7 +82,6 @@ async def upload_frames(video_name, frame, frame_no):
         print('file not uploaded')
 
 
-ses = SessionLocal()
 async def insert_frames(data=None):
     #data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'file_path':'umer', 'is_processed': 0}
     sess =  SessionLocal()
