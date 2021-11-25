@@ -46,14 +46,17 @@ ip_address = config('MY_IP')
 @app.post("/ocr", status_code=200)
 async def trigger_OcrAPI(background_tasks: BackgroundTasks, db: Session = Depends(get_db), ):
     results = await get_OCR_frames(db)
+    # for r in results:
+    #     print(r)
+
     start_time = time.time()
 
     api_end_point =  f'http://{ip_address}:8050/online'
 
     async def make_api_asyc_call():
         async with aiohttp.ClientSession(json_serialize=json.dumps) as session:
-            for result in results[0:20]:
-                image_url = result[3]
+            for result in results[0:10]:
+                image_url = result[4]
                 await session.post(api_end_point, json={"image_url":image_url})
             # await asyncio.gather(*tasks)
     background_tasks.add_task(make_api_asyc_call)
@@ -66,7 +69,8 @@ async def trigger_OcrAPI(background_tasks: BackgroundTasks, db: Session = Depend
 @app.post("/detectron2", status_code=200)
 async def trigger_detectron2API(background_tasks: BackgroundTasks, db: Session = Depends(get_db), ):
     results = await get_frames(db)
-    # print(results)
+    # for r in results:
+    #     print(r)
     # return(resp)
     start_time = time.time()
     # # tasks = []
@@ -74,9 +78,10 @@ async def trigger_detectron2API(background_tasks: BackgroundTasks, db: Session =
 
     async def make_api_asyc_call():
         async with aiohttp.ClientSession(json_serialize=json.dumps) as session:
-            for result in results[0:20]:
-                image_url = result[3]
-                await session.post(api_end_point, json={"image_url":image_url})
+            for result in results[0:10]:
+                image_url = result[4]
+                video_id = result[1]
+                await session.post(api_end_point, json={"image_url":image_url, 'video_id': video_id})
             # await asyncio.gather(*tasks)
     background_tasks.add_task(make_api_asyc_call)
     end_time = time.time()
