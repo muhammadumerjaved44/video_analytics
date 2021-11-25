@@ -46,11 +46,11 @@ async def insert_object(data=None):
     statement = text("""
             IF EXISTS (SELECT * from table_1 WHERE frame_no = :frame_no and video_name = :video_name)
             BEGIN
-            UPDATE table_1 SET ocr_object=:ocr_object WHERE frame_no = :frame_no and video_name = :video_name;
+            UPDATE table_1 SET text_=:text_, ocr_object=:ocr_object WHERE frame_no = :frame_no and video_name = :video_name;
             End
             else
             begin
-            INSERT INTO table_1 (frame_no, video_name, ocr_object) VALUES (:frame_no, :video_name, :ocr_object)
+            INSERT INTO table_1 (frame_no, video_name, text_, ocr_object) VALUES (:frame_no, :video_name, :text_, :ocr_object)
             end
          """
          )

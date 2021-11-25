@@ -39,7 +39,10 @@ async def insert_object(data=None):
     if data is None:
         print('data is missing to inesrt')
         # return
-    statement = text("""INSERT INTO table_1 (frame_no, video_name, detectron_object) VALUES (:frame_no, :video_name, :detectron_object)""")
+    # id	frame_no	video_id	video_name	detectron_object	ocr_object
+    statement = text("""INSERT INTO table_1 (frame_no, video_id, video_name, object_, value_, detectron_object) \
+        VALUES (:frame_no, :video_id, :video_name, :object_, :value_, :detectron_object)""")
+
     sess =  SessionLocal()
     with sess.connection() as connection:
         with connection.begin():

@@ -62,11 +62,12 @@ async def get_classes(image_path, background_tasks: BackgroundTasks):
 async def get_classes(background_tasks: BackgroundTasks, request: Request):
     data = await request.json()
     image_path = data['image_url']
+    video_id = data['video_id']
     try:
         if not image_path or len(image_path.strip()) == 0:
             raise HTTPException(status_code=404, detail="image path is invalid or empty")
         else:
-            background_tasks.add_task(pd_detectron2_cloud, image_path)
+            background_tasks.add_task(pd_detectron2_cloud, image_path, video_id)
 
             return {
                 'response': 'soon the predictions will be compeleted',

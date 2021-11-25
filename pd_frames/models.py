@@ -16,7 +16,6 @@ from pathlib import Path
 host=config('MINIO_HOST', cast=str)
 access_key=config('MINIO_ACCESS_KEY', cast=str)
 secret_key=config('MINIO_SECRET_KEY', cast=str)
-bucket_name=config('MINIO_BUCKET_NAME', cast=str)
 
 async def upload_video(video_file):
     bucket_name = 'videos'
@@ -29,8 +28,8 @@ async def upload_video(video_file):
 
     try:
         result = minio_client.fput_object(bucket_name, Path(video_file).name, video_file)
-        video_url = minio_client.presigned_get_object(bucket_name, Path(video_file).name, expires=datetime.timedelta(hours=2))
-        return video_url
+        video_url = minio_client.presigned_get_object(bucket_name, Path(video_file).name, expires=datetime.timedelta(hours=48))
+        return video_url, result.version_id
     except:
         print('file not uploaded')
 
@@ -43,8 +42,8 @@ async def insert_video(data=None):
             print('data is missing to inesrt')
             # return
 
-        statement = text("""INSERT INTO table_3 (video_name, video_url, is_video_processed)\
-            VALUES (:video_name, :video_url, :is_video_processed)""")
+        statement = text("""INSERT INTO table_3 (video_name, version_id, is_video_processed, is_in_progress, video_url)\
+            VALUES (:video_name, :version_id, :is_video_processed, :is_in_progress, :video_url)""")
 
         try:
             con.execute(statement, data)
@@ -55,6 +54,7 @@ async def insert_video(data=None):
             print('db connection not build / insertion failed')
 
 async def upload_frames(video_name, frame, frame_no):
+    bucket_name = 'frames'
     minio_client = Minio(host, access_key=access_key, secret_key=secret_key, secure=False)
     found = minio_client.bucket_exists(bucket_name)
     if not found:
@@ -75,7 +75,7 @@ async def upload_frames(video_name, frame, frame_no):
     try:
         frame_name_path = os.path.join(video_name, f"image_{frame_no}.jpg")
         minio_client.put_object(bucket_name, frame_name_path, frame_stream, frame_stream_size)
-        image_url = minio_client.presigned_get_object(bucket_name, frame_name_path, expires=datetime.timedelta(hours=2))
+        image_url = minio_client.presigned_get_object(bucket_name, frame_name_path, expires=datetime.timedelta(hours=48))
         print(image_url)
         return image_url
     except:
@@ -90,9 +90,9 @@ async def insert_frames(data=None):
         if data is None:
             print('data is missing to inesrt')
             # return
-
-        statement = text("""INSERT INTO table_2 (frame_no, video_name, file_path, is_processed)\
-            VALUES (:frame_no, :video_name, :file_path, :is_processed)""")
+        # id	video_id	frame_no	video_name	file_path	is_processed	is_ocr_processed
+        statement = text("""INSERT INTO table_2 (video_id, frame_no, video_name, file_path, is_processed, is_ocr_processed)\
+            VALUES (:video_id, :frame_no, :video_name, :file_path, :is_processed, :is_ocr_processed)""")
 
         try:
             con.execute(statement, data)
@@ -102,3 +102,88 @@ async def insert_frames(data=None):
         except:
             print('db connection not build / insertion failed')
             # return False
+
+
+async def get_videos():
+    #data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'file_path':'umer', 'is_processed': 0}
+    sess =  SessionLocal()
+    with sess.connection() as con:
+        statement = text("""SELECT TOP(1) * FROM table_3 WHERE is_video_processed=0""")
+
+        try:
+            results = con.execute(statement)
+            data = results.fetchall()
+            print('please getting unprocessed frames')
+            # return True
+        except:
+            print('db connection not build / insertion failed')
+
+    for record in data:
+        print(record[0])
+        with sess.connection() as con:
+            statement_update = text("""UPDATE table_3 SET is_video_processed=1, is_in_progress=1 WHERE id=:id""")
+            try:
+                results = con.execute(statement_update, {"id":record[0]})
+                print('please wait updating processed video frames')
+                # return True
+            except:
+                print('db connection not build / insertion failed')
+    return data
+
+async def update_progress_video_flag(data):
+
+    sess =  SessionLocal()
+    with sess.connection() as con:
+
+        if data is None:
+            print('data is missing to inesrt')
+            # return
+        # id	video_id	frame_no	video_name	file_path	is_processed	is_ocr_processed
+        statement = text("""UPDATE table_3 SET is_in_progress=:is_in_progress WHERE id=:id""")
+
+        try:
+            con.execute(statement, data)
+            print('please wait inserting frames')
+
+            # return True
+        except:
+            print('db connection not build / insertion failed')
+            # return False
+
+async def check_in_progress_videos():
+    sess =  SessionLocal()
+    with sess.connection() as con:
+        statement = text("""SELECT TOP(1) * FROM table_3 WHERE is_in_progress=1""")
+        try:
+            results = con.execute(statement)
+            data = results.fetchall()
+            if len(data)>0:
+                is_in_progress = True
+            else:
+                is_in_progress = False
+            print('please getting unprocessed frames')
+            # return True
+        except:
+            print('db connection not build / insertion failed')
+
+    return is_in_progress
+
+
+async def get_videos_as_object():
+    bucket_name = 'videos'
+    minio_client = Minio(host, access_key=access_key, secret_key=secret_key, secure=False)
+    found = minio_client.bucket_exists(bucket_name)
+    if not found:
+        minio_client.make_bucket(bucket_name)
+    else:
+        print("Bucket 'videos' already exists")
+
+    try:
+        response = minio_client.presigned_get_object(bucket_name, 'file_example_MP4_1280_10MG.mp4',
+                                           version_id='dda4f765-7227-4997-b1a0-805996e6300c',  expires=datetime.timedelta(hours=48))
+        with open('my-testfile.mp4', 'wb') as file_data:
+            for d in response.stream(32*1024):
+                file_data.write(d)
+    finally:
+        response.close()
+        response.release_conn()

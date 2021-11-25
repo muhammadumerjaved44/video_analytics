@@ -37,7 +37,7 @@ async def insert_text_object(frame_no, video_name, simple_ouput_text, simple_oup
         'word_base_text': simple_ouput_text_oprated[0]
     }
 
-    response = {'frame_no': frame_no, 'video_name': video_name, 'ocr_object': json.dumps(final_object)}
+    response = {'frame_no': frame_no, 'video_name': video_name, 'text_': simple_ouput_text[0], 'ocr_object': json.dumps(final_object)}
 
     print(response)
 
