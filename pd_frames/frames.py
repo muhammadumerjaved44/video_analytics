@@ -2,8 +2,8 @@
 import asyncio
 import os
 
-import cv2  # still used to save images out
 from decord import VideoReader, cpu, gpu
+
 # import local funciton here
 from models import insert_frames, upload_frames
 

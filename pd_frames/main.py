@@ -7,6 +7,7 @@ import wget
 from decouple import config
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.openapi.utils import get_openapi
+
 from frames import video_to_frames
 
 base_path = os.path.dirname(os.path.abspath(__file__))

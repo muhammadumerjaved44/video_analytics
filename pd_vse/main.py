@@ -1,28 +1,23 @@
 import asyncio
 import json
-import multiprocessing
-import ntpath
 import os
-import signal
-import sys
 import time
-from multiprocessing import Pool, cpu_count
-from pathlib import Path
 
 import aiohttp
 import httpx
 import numpy as np
 import requests
 import uvicorn
-from database import SessionLocal, engine
 from decouple import config
 from fastapi import (BackgroundTasks, Body, Depends, FastAPI, HTTPException,
                      Request, Response)
 # from fastapi.encoders import jsonable_encoder
 from fastapi.openapi.utils import get_openapi
-from models import get_counts, get_frames, get_predictions, get_OCR_frames
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+
+from database import SessionLocal, engine
+from models import get_counts, get_frames, get_OCR_frames, get_predictions
 
 base_path = os.path.dirname(os.path.abspath(__file__))
 

@@ -8,7 +8,6 @@ yml
 opencv-python
 cython
 wget
-pymongo
 schedule
 kafka-python
 aiohttp
