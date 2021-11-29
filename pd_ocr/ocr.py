@@ -29,17 +29,17 @@ import json
 langs = ['en']
 reader = Reader(langs)
 
-async def insert_text_object(frame_no, video_name, simple_ouput_text, simple_ouput_text_oprated):
-    final_object  = {
-        'simple_ouput_text': simple_ouput_text[0],
-        'basic_text' : simple_ouput_text_oprated[0],
-        'bolb_based_text' : simple_ouput_text_oprated[0],
-        'word_base_text': simple_ouput_text_oprated[0]
-    }
+async def insert_text_object(frame_no, video_name, video_id, frame_id, simple_ouput_text, simple_ouput_text_oprated):
+    # final_object  = {
+    #     'simple_ouput_text': simple_ouput_text[0],
+    #     'basic_text' : simple_ouput_text_oprated[0],
+    #     'bolb_based_text' : simple_ouput_text_oprated[0],
+    #     'word_base_text': simple_ouput_text_oprated[0]
+    # }
 
-    response = {'frame_no': frame_no, 'video_name': video_name, 'text_': simple_ouput_text[0], 'ocr_object': json.dumps(final_object)}
-
-    print(response)
+    # response = {'frame_no': frame_no, 'video_name': video_name, 'text_': simple_ouput_text[0], 'ocr_object': json.dumps(final_object)}
+    response = {'frame_id': frame_id, 'frame_no': frame_no, 'video_name': video_name, "video_id": video_id, 'object_': 'ocr', 'attribute_': 'text', 'value_': simple_ouput_text[0]}
+    print('my responce ', response)
 
     await insert_object(response)
     update_data = {'frame_no':frame_no, 'video_name': video_name, 'is_ocr_processed':1}
@@ -177,7 +177,7 @@ async  def all_processing(text, frame_no, video_name):
 
 
 
-async def main_ocr(main_file_url):
+async def main_ocr(main_file_url, frame_id, video_id):
     frame_no = urlparse(main_file_url).path.split('_')[-1].split('.')[0]
     video_name = urlparse(main_file_url).path.split('/')[-2]
     image = await asyncio.gather(
@@ -200,7 +200,7 @@ async def main_ocr(main_file_url):
 
     await asyncio.gather(
         asyncio.create_task(
-            insert_text_object(frame_no, video_name, simple_ouput_text, simple_ouput_text_oprated)
+            insert_text_object(frame_no, video_name, video_id, frame_id, simple_ouput_text, simple_ouput_text_oprated)
         )
     )
 

@@ -1,28 +1,21 @@
 import asyncio
 import json
-import multiprocessing
-import ntpath
 import os
-import signal
-import sys
 import time
-from multiprocessing import Pool, cpu_count
-from pathlib import Path
 
 import aiohttp
 import httpx
-import numpy as np
-import requests
 import uvicorn
-from database import SessionLocal, engine
 from decouple import config
 from fastapi import (BackgroundTasks, Body, Depends, FastAPI, HTTPException,
                      Request, Response)
 # from fastapi.encoders import jsonable_encoder
 from fastapi.openapi.utils import get_openapi
-from models import get_counts, get_frames, get_predictions, get_OCR_frames
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+
+from database import SessionLocal, engine
+from models import get_counts, get_frames, get_OCR_frames, get_predictions
 
 base_path = os.path.dirname(os.path.abspath(__file__))
 
@@ -56,8 +49,9 @@ async def trigger_OcrAPI(background_tasks: BackgroundTasks, db: Session = Depend
     async def make_api_asyc_call():
         async with aiohttp.ClientSession(json_serialize=json.dumps) as session:
             for result in results[0:10]:
-                image_url = result[4]
-                await session.post(api_end_point, json={"image_url":image_url})
+                video_id = result['video_id']
+                frame_id = result['id']
+                await session.post(api_end_point, json={'frame_id': frame_id,'video_id': video_id})
             # await asyncio.gather(*tasks)
     background_tasks.add_task(make_api_asyc_call)
     end_time = time.time()
@@ -79,9 +73,9 @@ async def trigger_detectron2API(background_tasks: BackgroundTasks, db: Session =
     async def make_api_asyc_call():
         async with aiohttp.ClientSession(json_serialize=json.dumps) as session:
             for result in results[0:10]:
-                image_url = result[4]
-                video_id = result[1]
-                await session.post(api_end_point, json={"image_url":image_url, 'video_id': video_id})
+                video_id = result['video_id']
+                frame_id = result['id']
+                await session.post(api_end_point, json={'frame_id': frame_id, 'video_id': video_id})
             # await asyncio.gather(*tasks)
     background_tasks.add_task(make_api_asyc_call)
     end_time = time.time()

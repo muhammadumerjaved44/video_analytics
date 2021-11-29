@@ -22,7 +22,7 @@ async def extract_frames(video_path, video_id, overwrite=False, start=-1, end=-1
     """
 
     # make the paths OS (Windows) compatible
-    video_path = os.path.normpath(video_path)
+    # video_path = os.path.normpath(video_path)
     # make the paths OS (Windows) compatible
     # frames_dir = os.path.normpath(frames_dir)
     max_index = 0
@@ -81,7 +81,7 @@ async def extract_frames(video_path, video_id, overwrite=False, start=-1, end=-1
                 max_index = special_index-1
 
             # call db save here
-        check_results = {'id': video_id, 'is_in_progress': 0}
+        check_results = {'id': video_id, 'is_in_progress': 0, 'is_video_processed': 1}
         await asyncio.gather(
             asyncio.create_task(update_progress_video_flag(check_results))
             )
@@ -122,7 +122,7 @@ async def extract_frames(video_path, video_id, overwrite=False, start=-1, end=-1
                     saved_count += 1  # increment our counter by one
                     special_index = special_index+1
                     max_index = special_index-1
-        check_results = {'id': video_id, 'is_in_progress': 0}
+        check_results = {'id': video_id, 'is_in_progress': 0, 'is_video_processed': 1}
         await asyncio.gather(
             asyncio.create_task(update_progress_video_flag(check_results))
             )
@@ -140,7 +140,7 @@ async def video_to_frames(video_path, video_id, overwrite=False, every=1):
     """
 
     # make the paths OS (Windows) compatible
-    video_path = os.path.normpath(video_path)
+    # video_path = os.path.normpath(video_path)
     # make the paths OS (Windows) compatible
     # frames_dir = os.path.normpath(frames_dir)
     # get the video path and filename from the path

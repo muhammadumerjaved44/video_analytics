@@ -1,16 +1,17 @@
-from database import SessionLocal, engine
-from sqlalchemy.sql import text
+import asyncio
+import datetime
+import os
+from io import BytesIO
+from pathlib import Path
+
+import cv2
 from decouple import config
 from minio import Minio
 from minio.error import ServerError
-from io import BytesIO
 from PIL import Image
-import cv2
-import datetime
-import os
-import asyncio
-from uuid import uuid4
-from pathlib import Path
+from sqlalchemy.sql import text
+
+from database import SessionLocal, engine
 
 # minio keys setup
 host=config('MINIO_HOST', cast=str)
@@ -111,19 +112,21 @@ async def get_videos():
         statement = text("""SELECT TOP(1) * FROM table_3 WHERE is_video_processed=0""")
 
         try:
-            results = con.execute(statement)
-            data = results.fetchall()
+            query_response = con.execute(statement)
+            # data = results.fetchall()
+            data = [{column: value for column, value in rowproxy.items()} for rowproxy in query_response]
             print('please getting unprocessed frames')
             # return True
         except:
             print('db connection not build / insertion failed')
-
+    
+    sess =  SessionLocal()
     for record in data:
-        print(record[0])
+        print(record['id'])
         with sess.connection() as con:
-            statement_update = text("""UPDATE table_3 SET is_video_processed=1, is_in_progress=1 WHERE id=:id""")
+            statement_update = text("""UPDATE table_3 SET is_in_progress=1 WHERE id=:id""")
             try:
-                results = con.execute(statement_update, {"id":record[0]})
+                results = con.execute(statement_update, {"id":record['id']})
                 print('please wait updating processed video frames')
                 # return True
             except:
@@ -139,7 +142,7 @@ async def update_progress_video_flag(data):
             print('data is missing to inesrt')
             # return
         # id	video_id	frame_no	video_name	file_path	is_processed	is_ocr_processed
-        statement = text("""UPDATE table_3 SET is_in_progress=:is_in_progress WHERE id=:id""")
+        statement = text("""UPDATE table_3 SET is_in_progress=:is_in_progress, is_video_processed=:is_video_processed  WHERE id=:id""")
 
         try:
             con.execute(statement, data)
@@ -149,6 +152,23 @@ async def update_progress_video_flag(data):
         except:
             print('db connection not build / insertion failed')
             # return False
+async def check_any_videos_left():
+    sess =  SessionLocal()
+    with sess.connection() as con:
+        statement = text("""SELECT TOP(1) * FROM table_3 WHERE is_video_processed=0""")
+        try:
+            results = con.execute(statement)
+            data = results.fetchall()
+            if len(data)>0:
+                is_any_video_left = True
+            else:
+                is_any_video_left = False
+            print('please getting unprocessed frames')
+            # return True
+        except:
+            print('db connection not build / insertion failed')
+
+    return is_any_video_left
 
 async def check_in_progress_videos():
     sess =  SessionLocal()
@@ -187,3 +207,33 @@ async def get_videos_as_object():
     finally:
         response.close()
         response.release_conn()
+
+async def get_unprocessed_videos_urls(data):
+    # data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'file_path':'umer'}
+    # data = {'id': 2}
+    sess =  SessionLocal()
+    with sess.connection() as con:
+        statement = text("""SELECT * FROM table_3 WHERE id=:id""")
+
+        try:
+            query_response = con.execute(statement, data)
+            # results = query_response.fetchall()res
+            results = [{column: value for column, value in rowproxy.items()} for rowproxy in query_response]
+            print('please wait inserting frames')
+        except:
+            print('db connection not build / insertion failed')
+
+
+    bucket_name = 'videos'
+    minio_client = Minio(host, access_key=access_key, secret_key=secret_key, secure=False)
+    found = minio_client.bucket_exists(bucket_name)
+    if not found:
+        minio_client.make_bucket(bucket_name)
+    else:
+        print("Bucket 'videos' already exists")
+
+    try:
+        video_url = minio_client.presigned_get_object(bucket_name, results[0]['video_name'], version_id=results[0]['version_id'], expires=datetime.timedelta(hours=48))
+        return video_url
+    except:
+        print('file not uploaded')

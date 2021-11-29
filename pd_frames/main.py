@@ -1,18 +1,20 @@
+import asyncio
 import ntpath
 import os
+import threading
+import time
 from pathlib import Path
 
 import uvicorn
 import wget
 from decouple import config
-from fastapi import BackgroundTasks, FastAPI, HTTPException, UploadFile, File
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
 from fastapi.openapi.utils import get_openapi
+
 from frames import video_to_frames
-from typing import List
-from decouple import config
-from models import upload_video, insert_video, get_videos, check_in_progress_videos
-import time
-import asyncio
+from models import (check_any_videos_left, check_in_progress_videos,
+                    get_unprocessed_videos_urls, get_videos, insert_video,
+                    upload_video)
 
 base_path = os.path.dirname(os.path.abspath(__file__))
 
@@ -56,9 +58,11 @@ async def get_frames(background_tasks: BackgroundTasks, video_path:str = None, o
         }
 
 @app.get("/online_decord", tags=["decord"])
-async def get_frames(background_tasks: BackgroundTasks,video_id,
-                     video_path=None, overwrite:bool =False , every: int = 1):
-    video_path = video_path.strip()
+async def get_frames(background_tasks: BackgroundTasks, video_id, overwrite:bool =False , every: int = 1):
+    # video_path = video_path.strip()
+    data = {'id': video_id, 'is_video_processed': 0}
+    video_path = await get_unprocessed_videos_urls(data)
+    print(video_path)
 
     # video_path ='https://file-examples-com.github.io/uploads/2017/04/file_example_MP4_1280_10MG.mp4'
     # late we use minio folder to download videos
@@ -76,7 +80,7 @@ async def get_frames(background_tasks: BackgroundTasks,video_id,
     #     except:
     #         raise HTTPException(status_code=404, detail="link not working on server or expire")
     try:
-        background_tasks.add_task(video_to_frames,video_path, video_id, overwrite, every)
+        background_tasks.add_task(video_to_frames, video_path, video_id, overwrite, every)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="video file path is invalid / local file not found")
 
@@ -86,31 +90,38 @@ async def get_frames(background_tasks: BackgroundTasks,video_id,
         'file_name': video_path,
     }
 
-async def process_frames(background_tasks: BackgroundTasks):
+async def process_frames(video_id, overwrite:bool =False , every: int = 1):
     print('start new processing')
-    video_path=None,
-    overwrite:bool =False
-    every: int = 1
+    video_id
+    every = 1
+    overwrite = False
+    data = {'id': video_id}
+    video_path = await get_unprocessed_videos_urls(data)
+    print('my video path', video_path)
 
-    data  = await get_videos()
+    await video_to_frames(video_path, video_id, overwrite, every)
 
-    if not data:
-        # schedule.clear()
-        return
-    else:
-        print('videos are in progress')
-        for d in data:
-            print(d[3])
-            video_path = d[4]
-            video_id = d[0]
-            try:
-                print('running a video please wait for it')
-                # await asyncio.gather(
-                #     asyncio.create_task(video_to_frames(video_path, video_id, overwrite, every))
-                # )
-                background_tasks.add_task(video_to_frames,video_path, video_id, overwrite, every)
-            except FileNotFoundError:
-                raise HTTPException(status_code=404, detail="video file path is invalid / local file not found")
+def between_callback(video_id):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    loop.run_until_complete(process_frames(video_id))
+    loop.close()
+    # data = await get_videos()
+    # video_id = data['id']
+    # overwrite:bool =False
+    # every: int = 1
+
+# def my_ruutine():
+#     asyncio.gather(asyncio.create_task(process_frames()))
+
+    # video_path = await get_unprocessed_videos_urls(video_id)
+
+    # try:
+    #     print('running a video please wait for it')
+    #     BackgroundTasks.add_task(video_to_frames,video_path, video_id, overwrite, every)
+    # except FileNotFoundError:
+    #     raise HTTPException(status_code=404, detail="video file path is invalid / local file not found")
 
 
 # async def process_frames2(background_tasks: BackgroundTasks):
@@ -138,28 +149,33 @@ async def get_frames(background_tasks: BackgroundTasks, file_path):
     print(data)
     await insert_video(data)
 
-    # schedule.every(5).seconds.do(process_frames, BackgroundTasks)
 
-
-    # loop = asyncio.get_event_loop()
-    # while True:
-    #     check_pgrogress = await check_in_progress_videos()
-    #     if check_pgrogress:
-    #         asyncio.sleep(30)
-    #         print('videos are in progress running from loop')
-    #         continue
-    #     else:
-    #        await asyncio.gather(
-    #         asyncio.create_task(process_frames())
-    #         )
-
-    # while True:
-    #     try:
-    #         asyncio.create_task(schedule.run_pending())
-    #         time.sleep(0.1)
-    #     except KeyboardInterrupt:
-    #         schedule.clear()
-    # schedule.clear()
+    is_progress = False
+    is_any_video_left = True
+    while True:
+        try:
+            print('is_progress, is_any_video_left', is_progress, is_any_video_left)
+            if is_any_video_left and not is_progress:
+                videos_data = await get_videos()
+                try:
+                    print(videos_data[0]['id'])
+                except:
+                    break
+                t1 = threading.Thread(target=between_callback, kwargs={'video_id': videos_data[0]['id']})
+                print('start new thread', t1.name)
+                t1.start()
+                t1.join()
+            elif not is_any_video_left:
+                print('the no video is left')
+                break
+            elif is_progress:
+                print('the video is already in progress')
+                is_progress  = await check_in_progress_videos()
+                is_any_video_left = await check_any_videos_left()
+                print('runn from elseif is_progress, is_any_video_left', is_progress, is_any_video_left)
+                time.sleep(30)
+        except KeyboardInterrupt:
+            break
 
 
 

@@ -31,17 +31,20 @@ from pdPredict import Visualizer
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-async def insert_detectron_object(frame_no, video_name, data, video_id):
-    final_object  = {
-        'data': [{"object": v1.split(" ")[0],"confidence": v1.split(" ")[1], 'class_lables': v2 }  for v1, v2 in  zip(data[0][3], data[0][2])],
-        'class_lable_list' : data[0][2],
-        # 'bbox_tensor' : data[0][0],
-    }
-    response = {'frame_no': frame_no, 'video_name': video_name, 'video_id': video_id,
-                'object_':[{"object": v1.split(" ")[0],"confidence": v1.split(" ")[1], 'class_lables': v2 }  for v1, v2 in  zip(data[0][3], data[0][2])][0]['object'],
-                'value_': [{"object": v1.split(" ")[0],"confidence": v1.split(" ")[1], 'class_lables': v2 }  for v1, v2 in  zip(data[0][3], data[0][2])][0]['confidence'],
-                'detectron_object': json.dumps(final_object)
-                }
+async def insert_detectron_object(frame_no, video_name, data, frame_id, video_id):
+    # final_object  = {
+    #     'data': [{"object": v1.split(" ")[0],"confidence": v1.split(" ")[1], 'class_lables': v2 }  for v1, v2 in  zip(data[0][3], data[0][2])],
+    #     'class_lable_list' : data[0][2],
+    #     # 'bbox_tensor' : data[0][0],
+    # }
+    response = [{"frame_no":frame_no, 'frame_id': frame_id, \
+        "video_name":video_name, "video_id": video_id, "object_": v1.split(" ")[0], 'attribute_': 'confidence', "value_": v1.split(" ")[-1]} \
+        for v1, v2 in  zip(data[0][3], data[0][2])]
+    # response = {'frame_no': frame_no, 'video_name': video_name, 'video_id': video_id,
+    #             'object_':[{"object": v1.split(" ")[0],"confidence": v1.split(" ")[1], 'class_lables': v2 }  for v1, v2 in  zip(data[0][3], data[0][2])][0]['object'],
+    #             'value_': [{"object": v1.split(" ")[0],"confidence": v1.split(" ")[1], 'class_lables': v2 }  for v1, v2 in  zip(data[0][3], data[0][2])][0]['confidence'],
+    #             'detectron_object': json.dumps(final_object)
+    #             }
     await insert_object(response)
     update_data = {'frame_no':frame_no, 'video_name': video_name, 'is_processed':1}
     await update_frame_flags(update_data)
@@ -104,7 +107,7 @@ async def pd_detectron2(main_file_path):
     else:
         raise HTTPException(status_code=404, detail="text on an image not found")
 
-async def pd_detectron2_cloud(main_file_url, video_id):
+async def pd_detectron2_cloud(main_file_url, frame_id, video_id):
     frame_no = urlparse(main_file_url).path.split('_')[-1].split('.')[0]
     video_name = urlparse(main_file_url).path.split('/')[-2]
     confifuration_and_data = await asyncio.gather(
@@ -118,7 +121,7 @@ async def pd_detectron2_cloud(main_file_url, video_id):
 
     await asyncio.gather(
         asyncio.create_task(
-            insert_detectron_object(frame_no, video_name, results, video_id)
+            insert_detectron_object(frame_no, video_name, results, frame_id, video_id)
         )
     )
     if len(results) > 0:

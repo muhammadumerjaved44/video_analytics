@@ -4,7 +4,7 @@ from io import BytesIO
 
 import cv2
 import numpy as np
-from database import SessionLocal
+from database import SessionLocal, engine
 from decouple import config
 from minio import Minio
 from minio.error import ServerError
@@ -40,8 +40,8 @@ async def insert_object(data=None):
         print('data is missing to inesrt')
         # return
     # id	frame_no	video_id	video_name	detectron_object	ocr_object
-    statement = text("""INSERT INTO table_1 (frame_no, video_id, video_name, object_, value_, detectron_object) \
-        VALUES (:frame_no, :video_id, :video_name, :object_, :value_, :detectron_object)""")
+    statement = text("""INSERT INTO table_1 (frame_no, frame_id, video_id, video_name, object_, attribute_, value_) \
+        VALUES (:frame_no, :frame_id, :video_id, :video_name, :object_, :attribute_, :value_)""")
 
     sess =  SessionLocal()
     with sess.connection() as connection:
@@ -67,3 +67,36 @@ async def update_frame_flags(data):
 
             except:
                 print('db connection not build / insertion failed')
+                
+
+async def get_unprocessed_frame_url(data):
+    # data = {'id':152, 'video_id':1}
+    sess =  SessionLocal()
+    with sess.connection() as con:
+        statement = text("""SELECT * FROM table_2 WHERE id=:id and  video_id=:video_id and is_processed=0""")
+
+        try:
+            query_response = con.execute(statement, data)
+            # results = query_response.fetchall()
+            results = [{column: value for column, value in rowproxy.items()} for rowproxy in query_response]
+            print('please wait inserting frames')
+        except:
+            print('db connection not build / insertion failed')
+
+
+    bucket_name = 'frames'
+    minio_client = Minio(host, access_key=access_key, secret_key=secret_key, secure=False)
+    found = minio_client.bucket_exists(bucket_name)
+    if not found:
+        minio_client.make_bucket(bucket_name)
+    else:
+        print("Bucket 'videos' already exists")
+
+    try:
+        folder_name = results[0]['video_name']
+        frame_no = results[0]['frame_no']
+        image_cloud_path = os.path.join(folder_name, f"image_{frame_no}.jpg")
+        frame_url = minio_client.presigned_get_object(bucket_name, image_cloud_path, expires=datetime.timedelta(hours=48))
+        return frame_url
+    except:
+        print('file not uploaded')

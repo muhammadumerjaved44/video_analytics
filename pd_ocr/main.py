@@ -1,22 +1,22 @@
-import os
 import glob
 import io
+import os
 import random
 import string
 from pathlib import Path
 from typing import Optional
 
 import requests
+import uvicorn
+from decouple import config
 from easyocr import Reader
 from fastapi import (BackgroundTasks, Depends, FastAPI, Header, HTTPException,
                      Request, Response)
-import uvicorn
+from fastapi.openapi.utils import get_openapi
 from PIL import Image
 from textblob import TextBlob
-from decouple import config
-from fastapi.openapi.utils import get_openapi
-from database import SessionLocal
-from pathlib import Path
+
+from models import get_unprocessed_ocr_frame_url
 
 # import nltk
 # # nltk.download('all')
@@ -25,8 +25,8 @@ base_path = os.path.dirname(os.path.abspath(__file__))
 
 
 
-from ocr import (basic_post_processing, bolb_based_post_processing, easyocr_read,
-                        word_base_post_processing, main_ocr)
+from ocr import (basic_post_processing, bolb_based_post_processing,
+                 easyocr_read, main_ocr, word_base_post_processing)
 
 app = FastAPI()
 langs = ['en']
@@ -72,13 +72,17 @@ async def get_text(image_path: str, response: Response):
 
 @app.post("/online")
 async def get_text(background_tasks: BackgroundTasks, request: Request):
-    data = await request.json()
-    image_path = data['image_url']
+    response = await request.json()
+    # image_path = response['image_url']
+    video_id = response['video_id']
+    frame_id = response['frame_id']
+    data = {'id':frame_id, 'video_id':video_id}
+    image_path = await get_unprocessed_ocr_frame_url(data)
     try:
         if not image_path or len(image_path.strip()) == 0:
             raise HTTPException(status_code=404, detail="image path is invalid or empty")
         else:
-            background_tasks.add_task(main_ocr, image_path)
+            background_tasks.add_task(main_ocr, image_path, frame_id, video_id)
 
             return {
                 'response': 'soon the predictions will be compeleted',

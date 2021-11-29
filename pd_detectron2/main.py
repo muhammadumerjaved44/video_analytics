@@ -1,15 +1,16 @@
-import asyncio
 import ntpath
 import os
 from pathlib import Path
-import numpy as np
+
 import uvicorn
 from decouple import config
-from detectron import pd_detectron2, pd_detectron2_cloud
 from fastapi import (BackgroundTasks, Depends, FastAPI, Header, HTTPException,
                      Request, Response)
 from fastapi.openapi.utils import get_openapi
 from pydantic import BaseModel
+
+from detectron import pd_detectron2, pd_detectron2_cloud
+from models import get_unprocessed_frame_url
 
 # from settings import Settings, get_settings
 
@@ -61,13 +62,16 @@ async def get_classes(image_path, background_tasks: BackgroundTasks):
 @app.post("/online")
 async def get_classes(background_tasks: BackgroundTasks, request: Request):
     data = await request.json()
-    image_path = data['image_url']
+    # image_path = data['image_url']
     video_id = data['video_id']
+    frame_id = data['frame_id']
+    input_data = {'id':frame_id, 'video_id':video_id}
+    image_path = await get_unprocessed_frame_url(input_data)
     try:
         if not image_path or len(image_path.strip()) == 0:
             raise HTTPException(status_code=404, detail="image path is invalid or empty")
         else:
-            background_tasks.add_task(pd_detectron2_cloud, image_path, video_id)
+            background_tasks.add_task(pd_detectron2_cloud, image_path,frame_id, video_id)
 
             return {
                 'response': 'soon the predictions will be compeleted',
