@@ -1,4 +1,4 @@
-version: '3.0'
+version: '2.4'
 
 # list of services in the Docker
 services:
@@ -18,10 +18,13 @@ services:
       - ${FASTAPI_LOCAL_PORT}:${FASTAPI_DOCKER_PORT}
     depends_on:
       - point-duty-deepstack
+    runtime: nvidia
+    shm_size: "3gb"
 
     environment:
       # python env
       POINT_DUTY_ENV: ${POINT_DUTY_ENV}
+      NVIDIA_VISIBLE_DEVICES: all
 
   # point-duty-deepstack service
   point-duty-deepstack:

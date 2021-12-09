@@ -8,9 +8,8 @@ from pathlib import Path
 import uvicorn
 import wget
 from decouple import config
-from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.openapi.utils import get_openapi
-
 from frames import video_to_frames
 from models import (check_any_videos_left, check_in_progress_videos,
                     get_unprocessed_videos_urls, get_videos, insert_video,
@@ -23,7 +22,10 @@ app = FastAPI()
 
 
 @app.post("/local_decord", status_code=200, tags=["decord"])
-async def get_frames(background_tasks: BackgroundTasks, video_path:str = None, overwrite:bool =False , every: int = 1):
+async def get_decord_frames_local(background_tasks: BackgroundTasks,
+                                  video_path:str = None,
+                                  overwrite:bool =False,
+                                  every: int = 1):
 
     dir_name = './video_download/'
     if not os.path.exists(dir_name):
@@ -36,21 +38,25 @@ async def get_frames(background_tasks: BackgroundTasks, video_path:str = None, o
         try:
             wget.download(video_path, full_path)
         except:
-            raise HTTPException(status_code=404, detail="link not working on server or expire")
+            raise HTTPException(status_code=404,
+                                detail="link not working on server or expire")
 
     video_path = video_path.strip()
     if not video_path or len(video_path) == 0:
-        raise HTTPException(status_code=404, detail="video file path is invalid or empty")
+        raise HTTPException(status_code=404,
+                            detail="video file path is invalid or empty")
     else:
         # late we use minio folder to download videos
         main_file_path = os.path.realpath('video_download/'+ntpath.basename(r'%s' % video_path))
         if not os.path.exists(main_file_path):
-            raise HTTPException(status_code=404, detail="video file path is invalid / local file not found")
+            raise HTTPException(status_code=404,
+                                detail="video file path is invalid / local file not found")
         try:
             background_tasks.add_task(video_to_frames,video_path, overwrite, every)
 
         except FileNotFoundError:
-            raise HTTPException(status_code=404, detail="video file path is invalid / local file not found")
+            raise HTTPException(status_code=404,
+                                detail="video file path is invalid / local file not found")
 
         return {
             'response': 'soon the video will be processed',
@@ -58,7 +64,10 @@ async def get_frames(background_tasks: BackgroundTasks, video_path:str = None, o
         }
 
 @app.get("/online_decord", tags=["decord"])
-async def get_frames(background_tasks: BackgroundTasks, video_id, overwrite:bool =False , every: int = 1):
+async def get_decord_frames_online(background_tasks: BackgroundTasks,
+                                   video_id,
+                                   overwrite:bool =False,
+                                   every: int = 1):
     # video_path = video_path.strip()
     data = {'id': video_id, 'is_video_processed': 0}
     video_path = await get_unprocessed_videos_urls(data)
@@ -66,23 +75,27 @@ async def get_frames(background_tasks: BackgroundTasks, video_id, overwrite:bool
 
     # video_path ='https://file-examples-com.github.io/uploads/2017/04/file_example_MP4_1280_10MG.mp4'
     # late we use minio folder to download videos
-    # todo: need to fix the path issues for video location
+    #TODO:
+    # 1) need to fix the path issues for video location
+    # 2) delete the video from local folder if downloaded
 
-    # dir_name = './video_download/'
-    # os.makedirs(os.path.join(dir_name), exist_ok=True)
-    # file_name = Path(video_path).name+'.mp4'
-    # full_path = dir_name+file_name
-    # print(full_path)
-    # if not os.path.exists(full_path):
-    #     print('downloading video on server')
-    #     try:
-    #         wget.download(video_path, full_path)
-    #     except:
-    #         raise HTTPException(status_code=404, detail="link not working on server or expire")
+    dir_name = './video_download/'
+    os.makedirs(os.path.join(dir_name), exist_ok=True)
+    file_name = Path(video_path).name+'.mp4'
+    full_path = dir_name+file_name
+    print(full_path)
+    if not os.path.exists(full_path):
+        print('downloading video on server')
+        try:
+            wget.download(video_path, full_path)
+        except:
+            raise HTTPException(status_code=404,
+                                detail="link not working on server or expire")
     try:
         background_tasks.add_task(video_to_frames, video_path, video_id, overwrite, every)
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="video file path is invalid / local file not found")
+        raise HTTPException(status_code=404,
+                            detail="video file path is invalid / local file not found")
 
 
     return {
@@ -92,9 +105,6 @@ async def get_frames(background_tasks: BackgroundTasks, video_id, overwrite:bool
 
 async def process_frames(video_id, overwrite:bool =False , every: int = 1):
     print('start new processing')
-    video_id
-    every = 1
-    overwrite = False
     data = {'id': video_id}
     video_path = await get_unprocessed_videos_urls(data)
     print('my video path', video_path)
@@ -107,45 +117,33 @@ def between_callback(video_id):
 
     loop.run_until_complete(process_frames(video_id))
     loop.close()
-    # data = await get_videos()
-    # video_id = data['id']
-    # overwrite:bool =False
-    # every: int = 1
 
-# def my_ruutine():
-#     asyncio.gather(asyncio.create_task(process_frames()))
-
-    # video_path = await get_unprocessed_videos_urls(video_id)
-
-    # try:
-    #     print('running a video please wait for it')
-    #     BackgroundTasks.add_task(video_to_frames,video_path, video_id, overwrite, every)
-    # except FileNotFoundError:
-    #     raise HTTPException(status_code=404, detail="video file path is invalid / local file not found")
-
-
-# async def process_frames2(background_tasks: BackgroundTasks):
-#     time.sleep(10)
-#     print('task compeleted')
 
 @app.get("/upload_decord_files", tags=["decord"])
-async def get_frames(background_tasks: BackgroundTasks, file_path):
+async def upload_decord_files_and_get_frames(file_path):
     dir_name = './video_download/'
     os.makedirs(os.path.join(dir_name), exist_ok=True)
     full_path = file_path
     main_file_path = os.path.realpath('video_download/'+ntpath.basename(r'%s' % full_path))
     print(main_file_path)
-    if not os.path.exists(main_file_path):
-        print('downloading video on server')
-        try:
+    try:
+        if not os.path.exists(main_file_path):
+            print('downloading video on server')
             wget.download(file_path, main_file_path)
-        except:
-            print('file already there')
+    except Exception as e:
+        print('file not properly downloaded', e)
 
-    print('umer ', os.path.relpath(main_file_path))
+    print('mian file path ', os.path.relpath(main_file_path))
     video_url, version_id = await upload_video(os.path.relpath(main_file_path))
-    print('umer  ', video_url)
-    data = {"video_name": Path(main_file_path).name, 'version_id': version_id, 'is_video_processed': 0, 'is_in_progress':0, 'video_url': video_url}
+    print('video url  ', video_url)
+
+    data = {"video_name": Path(main_file_path).name,
+            'version_id': version_id,
+            'is_video_processed': 0,
+            'is_in_progress':0,
+            'video_url': video_url,
+            }
+
     print(data)
     await insert_video(data)
 
@@ -161,10 +159,10 @@ async def get_frames(background_tasks: BackgroundTasks, file_path):
                     print(videos_data[0]['id'])
                 except:
                     break
-                t1 = threading.Thread(target=between_callback, kwargs={'video_id': videos_data[0]['id']})
-                print('start new thread', t1.name)
-                t1.start()
-                t1.join()
+                thread_1 = threading.Thread(target=between_callback, kwargs={'video_id': videos_data[0]['id']})
+                print('start new thread', thread_1.name)
+                thread_1.start()
+                thread_1.join()
             elif not is_any_video_left:
                 print('the no video is left')
                 break

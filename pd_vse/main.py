@@ -7,8 +7,7 @@ import aiohttp
 import httpx
 import uvicorn
 from decouple import config
-from fastapi import (BackgroundTasks, Body, Depends, FastAPI, HTTPException,
-                     Request, Response)
+from fastapi import (BackgroundTasks,Depends, FastAPI)
 # from fastapi.encoders import jsonable_encoder
 from fastapi.openapi.utils import get_openapi
 from pydantic import BaseModel
@@ -17,11 +16,12 @@ from sqlalchemy.orm import Session
 from database import SessionLocal, engine
 from models import get_counts, get_frames, get_OCR_frames, get_predictions
 
+
 base_path = os.path.dirname(os.path.abspath(__file__))
 
 
 app = FastAPI()
-class inputs(BaseModel):
+class Inputs(BaseModel):
     image_url:str
 
 def get_db():
@@ -37,7 +37,7 @@ def get_db():
 ip_address = config('MY_IP')
 
 @app.post("/ocr", status_code=200)
-async def trigger_OcrAPI(background_tasks: BackgroundTasks, db: Session = Depends(get_db), ):
+async def trigger_Ocr_API(background_tasks: BackgroundTasks, db: Session = Depends(get_db), ):
     results = await get_OCR_frames(db)
     # for r in results:
     #     print(r)
@@ -48,7 +48,7 @@ async def trigger_OcrAPI(background_tasks: BackgroundTasks, db: Session = Depend
 
     async def make_api_asyc_call():
         async with aiohttp.ClientSession(json_serialize=json.dumps) as session:
-            for result in results[0:10]:
+            for result in results:
                 video_id = result['video_id']
                 frame_id = result['id']
                 await session.post(api_end_point, json={'frame_id': frame_id,'video_id': video_id})
@@ -61,7 +61,7 @@ async def trigger_OcrAPI(background_tasks: BackgroundTasks, db: Session = Depend
     return {'Total_time': total_time, 'massage': 'prediction is initiated'}
 
 @app.post("/detectron2", status_code=200)
-async def trigger_detectron2API(background_tasks: BackgroundTasks, db: Session = Depends(get_db), ):
+async def trigger_detectron_API(background_tasks: BackgroundTasks, db: Session = Depends(get_db), ):
     results = await get_frames(db)
     # for r in results:
     #     print(r)
@@ -72,7 +72,7 @@ async def trigger_detectron2API(background_tasks: BackgroundTasks, db: Session =
 
     async def make_api_asyc_call():
         async with aiohttp.ClientSession(json_serialize=json.dumps) as session:
-            for result in results[0:10]:
+            for result in results:
                 video_id = result['video_id']
                 frame_id = result['id']
                 await session.post(api_end_point, json={'frame_id': frame_id, 'video_id': video_id})
@@ -85,17 +85,17 @@ async def trigger_detectron2API(background_tasks: BackgroundTasks, db: Session =
     return {'Total_time': total_time, 'massage': 'prediction is initiated'}
 
 @app.get("/frames", status_code=200)
-async def trigger_framesAPI(video_path, background_tasks: BackgroundTasks, overwrite:bool=False, every:int=1):
+async def trigger_frames_API(video_path, background_tasks: BackgroundTasks, overwrite:bool=False, every:int=1):
     # video_path='video_download/sample_video.mp4'
     # overwrite=False
     # every=1
     url = f'http://{ip_address}:8070/local_decord?video_path={video_path}&overwrite={overwrite}&every={every}'
 
     start_time = time.time()
-
+    
     async def make_api_asyc_call():
         async with aiohttp.ClientSession(json_serialize=json.dumps) as session:
-                await session.post(url)
+            await session.post(url)
             # await asyncio.gather(*tasks)
     background_tasks.add_task(make_api_asyc_call)
     end_time = time.time()
@@ -105,8 +105,8 @@ async def trigger_framesAPI(video_path, background_tasks: BackgroundTasks, overw
 
 @app.get("/all_frames", status_code=200)
 async def all_frames(db: Session = Depends(get_db)):
-    all_frames = await get_frames(db)
-    return {'response': all_frames}
+    all_frames_list = await get_frames(db)
+    return {'response': all_frames_list}
 
 @app.get("/all_predictions", status_code=200)
 async def all_predictions(db: Session = Depends(get_db)):

@@ -23,7 +23,7 @@ Place **.env** file relative to the **docker-compose.yaml**
 
     POINT_DUTY_ENV=development
 
-    # MSSQL_LOCAL_HOST=<Place Your Ip>
+    #MSSQL_LOCAL_HOST=192.168.20.200
     MSSQL_LOCAL_HOST=192.168.20.200
 
     SA_PASSWORD=2astazeY
@@ -40,12 +40,11 @@ Place **.env** file relative to the **docker-compose.yaml**
 
     COMPOSE_HTTP_TIMEOUT=2000
 
-    # minio keys setup for
+    #minio keys setup for
     MINIO_HOST=192.168.20.200:9000
     MINIO_BUCKET_NAME=frames
     MINIO_ACCESS_KEY=Q3AM3UQ867SPQQA43P2F
     MINIO_SECRET_KEY=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG
-
 
 ## Run for the first time
 Open terminal relative to the **docker-compose.yml**
@@ -60,3 +59,19 @@ Run this command in the terminal
 
 Hit on the local server
 http://localhost:8070/docs
+
+## END POINTS
+
+    curl -X 'GET' \
+    'http://localhost:8070/upload_decord_files?file_path=video_download%2FBad_fire.mp4' \
+    -H 'accept: application/json'
+
+or
+
+This end point takes the **relative path** of the video like this `video_download/Bad_fire.mp4` and will upload the video to **minio server** and trigger the frames codes which convert the video into frames and store the video information into **table_3** and frames information into **table_2**
+
+    http://localhost:8070/upload_decord_files?file_path=video_download/Bad_fire.mp4
+
+**Note:**
+
+ * video must be place in the ***video_download*** folder

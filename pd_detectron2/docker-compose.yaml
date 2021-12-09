@@ -1,4 +1,4 @@
-version: '3.4'
+version: '2.3'
 
 # list of services in the Docker
 services:
@@ -9,6 +9,8 @@ services:
     # image:
     build: .
     stdin_open: true
+    runtime: nvidia
+    shm_size: "3gb"
     tty: true
     restart: always
     command: uvicorn main:app --host 0.0.0.0 --reload
@@ -20,3 +22,4 @@ services:
     environment:
       # detectron2 env
       POINT_DUTY_ENV: ${POINT_DUTY_ENV}
+      NVIDIA_VISIBLE_DEVICES: all

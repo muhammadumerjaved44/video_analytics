@@ -1,12 +1,11 @@
 # import some common libraries
 import asyncio
-import os
-
-import cv2  # still used to save images out
-from decord import VideoReader, cpu, gpu
-# import local funciton here
-from models import insert_frames, upload_frames, update_progress_video_flag
+import os  # still used to save images out
 from urllib.parse import urlparse
+
+from decord import VideoReader, cpu  # , gpu # used when run on gpu
+# import local funciton here
+from models import insert_frames, update_progress_video_flag, upload_frames
 
 
 async def extract_frames(video_path, video_id, overwrite=False, start=-1, end=-1, every=1):
@@ -36,12 +35,14 @@ async def extract_frames(video_path, video_id, overwrite=False, start=-1, end=-1
         video_dir, video_name = os.path.split(video_path)
     print(video_name)
     # can set to cpu or gpu .. ctx=gpu(0)
-    vr = VideoReader(video_path, ctx=cpu(0))
+    # with open(video_path, 'rb') as path:
+    #     video_read = VideoReader(path, ctx=cpu(0))
+    video_read = VideoReader(video_path, ctx=cpu(0))
 
     if start < 0:  # if start isn't specified lets assume 0
         start = 0
     if end < 0:  # if end isn't specified assume the end of the video
-        end = len(vr)
+        end = len(video_read)
 
     frames_list = list(range(start, end, every))
     saved_count = 0
@@ -49,18 +50,17 @@ async def extract_frames(video_path, video_id, overwrite=False, start=-1, end=-1
     print("OKAY till here", len(frames_list), every)
     # this is faster for every > 25 frames and can fit in memory
     if every > 25 and len(frames_list) < 1000:
-        frames = vr.get_batch(frames_list).asnumpy()
+        # creating error on batch execution if every > 25 frames
+        # Need to run with cuda/GPU for a while
+        # so that not to run this section
+        # print('running from 25 frames')
+        # frames = video_read.get_batch(frames_list).asnumpy()
         special_index = 0
 
         # lets loop through the frames until the end
-        for index, frame in zip(frames_list, frames):
+        for index in frames_list:
+            frame = video_read[index]
             frame_no = str(special_index)
-
-            # create async save path rutine call
-            # save_path = await asyncio.gather(
-            #         asyncio.create_task(create_path(new_video_dir, frames_dir, video_name, frame_no))
-            #         )
-            # save_path= save_path[0]
 
             # if it doesn't exist or we want to overwrite anyways
             print('enter in loop')
@@ -72,16 +72,27 @@ async def extract_frames(video_path, video_id, overwrite=False, start=-1, end=-1
                     asyncio.create_task(upload_frames(video_name, frame, frame_no))
                 )
 
-                results = {'video_id': video_id, "frame_no": frame_no, "video_name": video_name, "file_path": save_path[0], 'is_processed': 0, 'is_ocr_processed':0}
+                results = {'video_id': video_id,
+                           "frame_no": frame_no,
+                           "video_name": video_name,
+                           "file_path": save_path[0],
+                           'is_processed': 0,
+                           'is_ocr_processed':0,
+                           }
+
                 await asyncio.gather(
                     asyncio.create_task(insert_frames(results))
                     )
+
                 saved_count += 1  # increment our counter by one
                 special_index = special_index+1
                 max_index = special_index-1
 
             # call db save here
-        check_results = {'id': video_id, 'is_in_progress': 0, 'is_video_processed': 1}
+        check_results = {'id': video_id,
+                         'is_in_progress': 0,
+                         'is_video_processed': 1,
+                         }
         await asyncio.gather(
             asyncio.create_task(update_progress_video_flag(check_results))
             )
@@ -92,17 +103,12 @@ async def extract_frames(video_path, video_id, overwrite=False, start=-1, end=-1
 
         for index in range(start, end):  # lets loop through the frames until the end
 
-            frame = vr[index]  # read an image from the capture
+            frame = video_read[index]  # read an image from the capture
             # print(frame)
             print('else loop')
-            if index % every == 0:  # if this is a frame we want to write out based on the 'every' argument
+            # if this is a frame we want to write out based on the 'every' argument
+            if index % every == 0:
                 frame_no = str(special_index)
-
-                # create async save path rutine call
-                # save_path = await asyncio.gather(
-                #     asyncio.create_task(create_path(new_video_dir, frames_dir, video_name, frame_no))
-                #     )
-                # save_path= save_path[0]
 
                 # if it doesn't exist or we want to overwrite anyways
                 if not overwrite:
@@ -113,7 +119,14 @@ async def extract_frames(video_path, video_id, overwrite=False, start=-1, end=-1
                     )
                     print(save_path)
 
-                    results = {'video_id': video_id, "frame_no": frame_no, "video_name": video_name, "file_path": save_path[0], 'is_processed': 0, 'is_ocr_processed':0}
+                    results = {"video_id": video_id,
+                               "frame_no": frame_no,
+                               "video_name": video_name,
+                               "file_path": save_path[0],
+                               "is_processed": 0,
+                               "is_ocr_processed":0,
+                               }
+
                     print(results)
                     await asyncio.gather(
                         asyncio.create_task(insert_frames(results))
@@ -129,7 +142,7 @@ async def extract_frames(video_path, video_id, overwrite=False, start=-1, end=-1
         return max_index  # and return the count of the images we saved
 
 
-async def video_to_frames(video_path, video_id, overwrite=False, every=1):
+async def video_to_frames(video_path_url, video_id, overwrite=False, every=1):
     """
     Extracts the frames from a video
     :param video_path: path to the video
@@ -150,19 +163,17 @@ async def video_to_frames(video_path, video_id, overwrite=False, every=1):
     # os.makedirs(os.path.join(frames_dir, video_name), exist_ok=True)
 
     # let's now extract the frames
-    saved_count = await extract_frames(video_path, video_id, every=every)
+    saved_count = await extract_frames(video_path_url, video_id, overwrite=False, every=every)
 
     # os.path.join(frames_dir, video_name)  # when done return the directory containing the frames
-    
+
     return saved_count
 
 
 if __name__ == "__main__":
-    video_path = 'http://192.168.20.200:9000/videos/file_example_MP4_1280_10MG.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=Q3AM3UQ867SPQQA43P2F%2F20211119%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20211119T122822Z&X-Amz-Expires=172800&X-Amz-SignedHeaders=host&X-Amz-Signature=588bd7d4a2b4937cc95c41935756850a6b0cc241a9fe666f44af7fa325f5d0bd'
-    video_id = 20
-# if not os.path.exists(video_path):
+    VIDEO_PATH = 'http://192.168.20.200:9000/videos/file_example_MP4_1280_10MG.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=Q3AM3UQ867SPQQA43P2F%2F20211119%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20211119T122822Z&X-Amz-Expires=172800&X-Amz-SignedHeaders=host&X-Amz-Signature=588bd7d4a2b4937cc95c41935756850a6b0cc241a9fe666f44af7fa325f5d0bd'
+    VIDEO_ID = 20
+# if not os.path.exists(VIDEO_PATH):
 #     raise FileNotFoundError(
 #         'file not found you need to pass the correct path')
-    # await video_to_frames(video_path, video_id, overwrite=False, every=1)
-
-
+    # await video_to_frames(VIDEO_PATH, VIDEO_ID, overwrite=False, every=1)

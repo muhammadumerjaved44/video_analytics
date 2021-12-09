@@ -4,12 +4,11 @@ from io import BytesIO
 
 import cv2
 import numpy as np
+from database import SessionLocal
 from decouple import config
 from minio import Minio
 from minio.error import ServerError
 from sqlalchemy.sql import text
-
-from database import SessionLocal
 
 host=config('MINIO_HOST', cast=str)
 access_key=config('MINIO_ACCESS_KEY', cast=str)

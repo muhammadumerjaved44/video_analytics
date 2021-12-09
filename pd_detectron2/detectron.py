@@ -24,12 +24,42 @@ from detectron2.config import get_cfg
 from detectron2.data import MetadataCatalog
 from detectron2.engine import DefaultPredictor
 from fastapi import HTTPException
+import time
+import aiofiles
+import gc
 
 from models import fetch_image_from_url, insert_object, update_frame_flags
 # from detectron2.utils.visualizer import Visualizer
 from pdPredict import Visualizer
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+time_list = []
+
+def timeit(func):
+    async def process(func, *args, **params):
+        if asyncio.iscoroutinefunction(func):
+            print('this function is a coroutine: {}'.format(func.__name__))
+            return await func(*args, **params)
+        else:
+            print('this is not a coroutine')
+            return func(*args, **params)
+
+    async def helper(*args, **params):
+        print('{}.time'.format(func.__name__))
+        start = time.time()
+        result = await process(func, *args, **params)
+
+        # Test normal function route...
+        # result = await process(lambda *a, **p: print(*a, **p), *args, **params)
+        final_time = time.time() - start
+        async with aiofiles.open('time_data.txt', mode='a') as f:
+            await f.write(f'\n{final_time},')
+        print('\n\n\nTotal execution time for this function = {} >>>'.format(func.__name__),final_time, '\n\n\n')
+        return result, final_time
+
+    return helper
+
 
 async def insert_detectron_object(frame_no, video_name, data, frame_id, video_id):
     # final_object  = {
@@ -56,29 +86,43 @@ async def get_image(main_file_path):
 
 
 async def load_configuration():
-    cfg = get_cfg()
-    # add project-specific config (e.g., TensorMask) here if you're not running a model in detectron2's core library
-    cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"))
-    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5  # set threshold for this model
-    # Find a model from detectron2's model zoo. You can use the https://dl.fbaipublicfiles... url as well
-    cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml")
-    if not config('DOCKER_ENABLE'):
-        cfg.MODEL.DEVICE = "cuda"
+    if not config('DOCKER_ENABLE', cast=bool):
+        print('running from cuda')
+        with torch.cuda.device(0):
+            cfg = get_cfg()
+            # add project-specific config (e.g., TensorMask) here if you're not running a model in detectron2's core library
+            cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"))
+            cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5  # set threshold for this model
+            # cfg.MODEL.DEVICE = "cuda"
+            # Find a model from detectron2's model zoo. You can use the https://dl.fbaipublicfiles... url as well
+            cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml")
+            cfg.MODEL.DEVICE = "cuda"
     else:
+        cfg = get_cfg()
+        # add project-specific config (e.g., TensorMask) here if you're not running a model in detectron2's core library
+        cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"))
+        cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5  # set threshold for this model
+        # cfg.MODEL.DEVICE = "cuda"
+        # Find a model from detectron2's model zoo. You can use the https://dl.fbaipublicfiles... url as well
+        cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml")
         cfg.MODEL.DEVICE = "cpu"
     print('model loaded done')
     return cfg
 
 async def image_predictor(cfg, im):
+
     predictor = DefaultPredictor(cfg)
     # torch.cuda.synchronize()
     outputs = predictor(im)
     # torch.cuda.empty_cache()
+    # print(outputs["instances"].pred_classes)
+    # print(outputs["instances"].pred_boxes)
 
     v = Visualizer(im[:, :, ::-1], MetadataCatalog.get(cfg.DATASETS.TRAIN[0]), scale=1.2)
-    # out = v.draw_instance_predictions(outputs["instances"].to("cuda"))
-    if not config('DOCKER_ENABLE'):
-        response = await v.get_only_lables(outputs["instances"].to("cuda"))
+        # out = v.draw_instance_predictions(outputs["instances"].to("cuda"))
+    if not config('DOCKER_ENABLE', cast=bool):
+        with torch.cuda.device(0):
+            response = await v.get_only_lables(outputs["instances"].to("cuda"))
     else:
         response = await v.get_only_lables(outputs["instances"].to("cpu"))
 
@@ -102,12 +146,16 @@ async def pd_detectron2(main_file_path):
             insert_detectron_object(frame_no, video_name, results)
         )
     )
+    gc.collect()
+    torch.cuda.empty_cache()
     if len(results) > 0:
         return results[0]
     else:
         raise HTTPException(status_code=404, detail="text on an image not found")
 
+@timeit
 async def pd_detectron2_cloud(main_file_url, frame_id, video_id):
+
     frame_no = urlparse(main_file_url).path.split('_')[-1].split('.')[0]
     video_name = urlparse(main_file_url).path.split('/')[-2]
     confifuration_and_data = await asyncio.gather(

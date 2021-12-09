@@ -5,13 +5,12 @@ from io import BytesIO
 from pathlib import Path
 
 import cv2
+from database import SessionLocal, engine
 from decouple import config
 from minio import Minio
 from minio.error import ServerError
 from PIL import Image
 from sqlalchemy.sql import text
-
-from database import SessionLocal, engine
 
 # minio keys setup
 host=config('MINIO_HOST', cast=str)

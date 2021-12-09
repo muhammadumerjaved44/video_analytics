@@ -32,6 +32,7 @@ engine = create_engine(
         },
     ),
     echo=True,
+    pool_size=2,
     pool_pre_ping=True
 )
 

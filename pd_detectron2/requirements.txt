@@ -13,3 +13,4 @@ wget
 torch==1.9
 torchvision==0.10.0
 minio
+aiofiles

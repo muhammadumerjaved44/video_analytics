@@ -1,22 +1,15 @@
-import glob
-import io
-import os
-import random
-import string
-from pathlib import Path
-from typing import Optional
 
-import requests
+import os
+from pathlib import Path
+
 import uvicorn
 from decouple import config
 from easyocr import Reader
-from fastapi import (BackgroundTasks, Depends, FastAPI, Header, HTTPException,
-                     Request, Response)
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.openapi.utils import get_openapi
-from PIL import Image
-from textblob import TextBlob
-
 from models import get_unprocessed_ocr_frame_url
+from ocr import (basic_post_processing, bolb_based_post_processing,
+                 easyocr_read, main_ocr, word_base_post_processing)
 
 # import nltk
 # # nltk.download('all')
@@ -25,34 +18,40 @@ base_path = os.path.dirname(os.path.abspath(__file__))
 
 
 
-from ocr import (basic_post_processing, bolb_based_post_processing,
-                 easyocr_read, main_ocr, word_base_post_processing)
 
 app = FastAPI()
-langs = ['en']
-reader = Reader(langs)
+
+if not config('DOCKER_ENABLE', cast=bool):
+    print('running from gpu')
+    langs = ['en']
+    reader = Reader(langs, gpu=True)
+else:
+    langs = ['en']
+    reader = Reader(langs)
 
 
 @app.post("/local", status_code=200)
-async def get_text(image_path: str, response: Response):
+async def get_local_text(image_path: str):
 
     # print('----------------->', image_path)
 
     if not image_path or len(image_path.strip()) == 0:
-        # return {'massage': 'No text found on image'}
         raise HTTPException(status_code=404, detail="image path is invalid or empty")
     else:
         main_file_path = os.path.realpath(os.path.basename(r'%s' % image_path))
         if not os.path.exists(main_file_path):
-            raise HTTPException(status_code=404, detail="image path is invalid / local file not found")
+            raise HTTPException(status_code=404,
+                                detail="image path is invalid / local file not found")
         try:
             simple_ouput_text = easyocr_read(main_file_path, reader)
             if len(simple_ouput_text) > 0:
                 pass
             else:
-                raise HTTPException(status_code=404, detail="text on an image not found")
+                raise HTTPException(status_code=404,
+                                    detail="text on an image not found")
         except FileNotFoundError:
-            raise HTTPException(status_code=404, detail="image path is invalid / local file not found")
+            raise HTTPException(status_code=404,
+                                detail="image path is invalid / local file not found")
 
 
         # post correction
@@ -71,7 +70,7 @@ async def get_text(image_path: str, response: Response):
         }
 
 @app.post("/online")
-async def get_text(background_tasks: BackgroundTasks, request: Request):
+async def get_online_text(background_tasks: BackgroundTasks, request: Request):
     response = await request.json()
     # image_path = response['image_url']
     video_id = response['video_id']
@@ -80,7 +79,7 @@ async def get_text(background_tasks: BackgroundTasks, request: Request):
     image_path = await get_unprocessed_ocr_frame_url(data)
     try:
         if not image_path or len(image_path.strip()) == 0:
-            raise HTTPException(status_code=404, detail="image path is invalid or empty")
+            raise HTTPException(status_code=400, detail="image path is invalid or empty")
         else:
             background_tasks.add_task(main_ocr, image_path, frame_id, video_id)
 
@@ -88,8 +87,8 @@ async def get_text(background_tasks: BackgroundTasks, request: Request):
                 'response': 'soon the predictions will be compeleted',
                 'file_name': image_path,
             }
-    except:
-        print('image not processed for some reason')
+    except Exception as e:
+        print('image not processed for some reason', e)
 
 def custom_openapi():
     if app.openapi_schema:

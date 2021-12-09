@@ -36,17 +36,11 @@ RUN apt-get install -y unixodbc-dev \
 WORKDIR /code
 COPY requirements.txt .
 
-RUN /bin/sh -c python -m nltk.downloader all
-
-
-
-
-
-
-
 
 ENV CONDA_PACKAGES="-c anacondams pyodbc"
 
 RUN conda install $CONDA_PACKAGES
 
 RUN pip install -r requirements.txt
+
+RUN /bin/sh -c python -m nltk.downloader all

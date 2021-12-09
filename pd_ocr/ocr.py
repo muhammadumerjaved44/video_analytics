@@ -5,29 +5,67 @@ import string
 from collections import Counter
 
 import nltk
+
 nltk.download('punkt')
 # nltk.download('all')
 
+import asyncio
+import gc
+import json
+import time
+from pathlib import Path
+from urllib.parse import urlparse
+
+import aiofiles
 import pandas as pd
 import requests
 import torch
+from decouple import config
 from easyocr import Reader
-from nltk import word_tokenize
-from PIL import Image
-from textblob import TextBlob
-
-from spell_correction import correction
 from fastapi import HTTPException
 from models import fetch_image_from_url, insert_object, update_frame_flags
-from pathlib import Path
-import asyncio
-from urllib.parse import urlparse
-import json
+from nltk import word_tokenize
+from PIL import Image
+from spell_correction import correction
+from textblob import TextBlob
+
+gc.collect()
+torch.cuda.empty_cache()
 
 
+if not config('DOCKER_ENABLE', cast=bool):
+    print('running from gpu')
+    langs = ['en']
+    reader = Reader(langs, gpu=True)
+else:
+    langs = ['en']
+    reader = Reader(langs)
 
-langs = ['en']
-reader = Reader(langs)
+time_list = []
+
+def timeit(func):
+    async def process(func, *args, **params):
+        if asyncio.iscoroutinefunction(func):
+            print('this function is a coroutine: {}'.format(func.__name__))
+            return await func(*args, **params)
+        else:
+            print('this is not a coroutine')
+            return func(*args, **params)
+
+    async def helper(*args, **params):
+        print('{}.time'.format(func.__name__))
+        start = time.time()
+        result = await process(func, *args, **params)
+
+        # Test normal function route...
+        # result = await process(lambda *a, **p: print(*a, **p), *args, **params)
+        final_time = time.time() - start
+        async with aiofiles.open('time_data.txt', mode='a') as f:
+            await f.write(f'\n{final_time},')
+        print('\n\n\nTotal execution time for this function = {} >>>'.format(func.__name__),final_time, '\n\n\n')
+        return result, final_time
+
+    return helper
 
 async def insert_text_object(frame_no, video_name, video_id, frame_id, simple_ouput_text, simple_ouput_text_oprated):
     # final_object  = {
@@ -176,7 +214,7 @@ async  def all_processing(text, frame_no, video_name):
     result = {frame_no, video_name}
 
 
-
+@timeit
 async def main_ocr(main_file_url, frame_id, video_id):
     frame_no = urlparse(main_file_url).path.split('_')[-1].split('.')[0]
     video_name = urlparse(main_file_url).path.split('/')[-2]
@@ -203,6 +241,8 @@ async def main_ocr(main_file_url, frame_id, video_id):
             insert_text_object(frame_no, video_name, video_id, frame_id, simple_ouput_text, simple_ouput_text_oprated)
         )
     )
+    gc.collect()
+    torch.cuda.empty_cache()
 
 
 if __name__ == "__main__":
