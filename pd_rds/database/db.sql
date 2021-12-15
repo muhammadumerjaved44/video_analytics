@@ -27,11 +27,12 @@ CREATE TABLE point_duty.dbo.table_3 (
 CREATE TABLE point_duty.dbo.table_2 (
 	id bigint IDENTITY(0,1) NOT NULL,
 	video_id bigint NOT NULL,
-	frame_no varchar(30) COLLATE Latin1_General_BIN NOT NULL,
+	frame_no varchar(255) COLLATE Latin1_General_BIN NOT NULL,
 	video_name varchar(255) COLLATE Latin1_General_BIN NOT NULL,
 	file_path text COLLATE Latin1_General_BIN NOT NULL,
 	is_processed tinyint DEFAULT 0 NULL,
 	is_ocr_processed tinyint DEFAULT 0 NULL,
+	is_pic_purified tinyint DEFAULT 0 NULL,
 	CONSTRAINT PK_24 PRIMARY KEY (id,video_id),
 	CONSTRAINT FK_94 FOREIGN KEY (video_id) REFERENCES point_duty.dbo.table_3(id)
 );
@@ -50,7 +51,7 @@ CREATE TABLE point_duty.dbo.table_1 (
 	id bigint IDENTITY(0,1) NOT NULL,
 	frame_id bigint NOT NULL,
 	video_id bigint NOT NULL,
-	frame_no varchar(30) COLLATE SQL_Latin1_General_CP1_CI_AS NOT NULL,
+	frame_no varchar(255) COLLATE SQL_Latin1_General_CP1_CI_AS NOT NULL,
 	video_name varchar(255) COLLATE SQL_Latin1_General_CP1_CI_AS NOT NULL,
 	object_ varchar(100) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
 	attribute_ varchar(100) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
