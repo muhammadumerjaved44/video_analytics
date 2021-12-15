@@ -4,17 +4,17 @@ import os
 import time
 
 import aiohttp
-import httpx
 import uvicorn
 from decouple import config
-from fastapi import (BackgroundTasks,Depends, FastAPI)
+from analysis import content
+from fastapi import (BackgroundTasks,Depends, FastAPI, Query)
 # from fastapi.encoders import jsonable_encoder
 from fastapi.openapi.utils import get_openapi
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from database import SessionLocal, engine
-from models import get_counts, get_frames, get_OCR_frames, get_predictions
+from models import get_counts, get_frames, get_OCR_frames, get_predictions, get_picpurify_frames
 
 
 base_path = os.path.dirname(os.path.abspath(__file__))
@@ -42,6 +42,8 @@ async def trigger_Ocr_API(background_tasks: BackgroundTasks, db: Session = Depen
     # for r in results:
     #     print(r)
 
+    print('total records fetched from db', len(results))
+
     start_time = time.time()
 
     api_end_point =  f'http://{ip_address}:8050/online'
@@ -52,6 +54,7 @@ async def trigger_Ocr_API(background_tasks: BackgroundTasks, db: Session = Depen
                 video_id = result['video_id']
                 frame_id = result['id']
                 await session.post(api_end_point, json={'frame_id': frame_id,'video_id': video_id})
+        await session.close()
             # await asyncio.gather(*tasks)
     background_tasks.add_task(make_api_asyc_call)
     end_time = time.time()
@@ -66,6 +69,7 @@ async def trigger_detectron_API(background_tasks: BackgroundTasks, db: Session =
     # for r in results:
     #     print(r)
     # return(resp)
+    print('total records fetched from db', len(results))
     start_time = time.time()
     # # tasks = []
     api_end_point =  f'http://{ip_address}:8060/online'
@@ -77,6 +81,7 @@ async def trigger_detectron_API(background_tasks: BackgroundTasks, db: Session =
                 frame_id = result['id']
                 await session.post(api_end_point, json={'frame_id': frame_id, 'video_id': video_id})
             # await asyncio.gather(*tasks)
+        await session.close()
     background_tasks.add_task(make_api_asyc_call)
     end_time = time.time()
     total_time = end_time-start_time
@@ -92,7 +97,7 @@ async def trigger_frames_API(video_path, background_tasks: BackgroundTasks, over
     url = f'http://{ip_address}:8070/local_decord?video_path={video_path}&overwrite={overwrite}&every={every}'
 
     start_time = time.time()
-    
+
     async def make_api_asyc_call():
         async with aiohttp.ClientSession(json_serialize=json.dumps) as session:
             await session.post(url)
@@ -117,6 +122,48 @@ async def all_predictions(db: Session = Depends(get_db)):
 async def all_predictions_counts(db: Session = Depends(get_db)):
     all_count = await get_counts(db)
     return {'response': all_count}
+
+
+@app.get("/pic_purify_api", status_code=200, tags=["PicPurify API"])
+async def pic_purify_api(background_tasks: BackgroundTasks,
+                         moderation: str = Query("gore_moderation",
+                                                 enum=['gore_moderation',
+                                                       'money_moderation',
+                                                       'weapon_moderation',
+                                                       'drug_moderation',
+                                                       'hate_sign_moderation',
+                                                       'obscene_gesture_moderation',
+                                                       'qr_code_moderation',
+                                                       'content_moderation_profile',
+                                                       'porn_moderation',
+                                                       'suggestive_nudity_moderation',]
+                                                 ),
+                         db: Session = Depends(get_db)):
+
+    results = await get_picpurify_frames(db)
+    # for r in results:
+    #     print(r)
+    # return(resp)
+    print('total records fetched from db', len(results))
+    start_time = time.time()
+
+    api_end_point =  f'http://{ip_address}:8060/pic_purify_api_frames'
+
+    async def make_api_asyc_call():
+        async with aiohttp.ClientSession(json_serialize=json.dumps) as session:
+            for result in results[0:1]:
+                video_id = result['video_id']
+                frame_id = result['id']
+                await session.post(api_end_point, json={'frame_id': frame_id, 'video_id': video_id, 'moderation': moderation})
+            # await asyncio.gather(*tasks)
+        await session.close()
+    background_tasks.add_task(make_api_asyc_call)
+    end_time = time.time()
+    total_time = end_time-start_time
+    # print(end_time-start_time)
+    # return {'result': all_frames}
+    return {'Total_time': total_time, 'massage': 'picpurify prediction is initiated'}
+
 
 
 def custom_openapi():
