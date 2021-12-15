@@ -91,8 +91,8 @@ async def insert_frames(data=None):
             print('data is missing to inesrt')
             # return
         # id	video_id	frame_no	video_name	file_path	is_processed	is_ocr_processed
-        statement = text("""INSERT INTO table_2 (video_id, frame_no, video_name, file_path, is_processed, is_ocr_processed)\
-            VALUES (:video_id, :frame_no, :video_name, :file_path, :is_processed, :is_ocr_processed)""")
+        statement = text("""INSERT INTO table_2 (video_id, frame_no, video_name, file_path, is_processed, is_ocr_processed, is_pic_purified)\
+            VALUES (:video_id, :frame_no, :video_name, :file_path, :is_processed, :is_ocr_processed, :is_pic_purified)""")
 
         try:
             con.execute(statement, data)

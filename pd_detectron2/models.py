@@ -33,6 +33,23 @@ async def fetch_image_from_url(video_name, frame_no):
     except:
         print('image not found')
 
+async def fetch_image_from_url_rb(video_name, frame_no):
+    minio_client = Minio(host, access_key=access_key, secret_key=secret_key, secure=False)
+    found = minio_client.bucket_exists(bucket_name)
+    if not found:
+        minio_client.make_bucket(bucket_name)
+    else:
+        print("Bucket 'frames' already exists")
+
+    try:
+        frame_name_path = os.path.join(video_name, f"image_{frame_no}.jpg")
+        response = minio_client.get_object(bucket_name, frame_name_path)
+        # image = Image.open(BytesIO(response.data))
+        image = response.data
+        return image
+    except:
+        print('image not found')
+
 ses = SessionLocal()
 async def insert_object(data=None):
     #data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'detectron_object':'umer'}
@@ -55,7 +72,7 @@ async def insert_object(data=None):
                 print('db connection not build / insertion failed')
                 # return False
 
-async def update_frame_flags(data):
+async def update_detectron_frame_flags(data):
     # data = {'frame_no': '1', 'video_name': 'videoplayback.mp4', 'is_processed': 1}
     statement = text(f"""UPDATE table_2 SET is_processed=:is_processed WHERE frame_no=:frame_no and video_name=:video_name""")
     sess =  SessionLocal()
@@ -67,13 +84,57 @@ async def update_frame_flags(data):
 
             except:
                 print('db connection not build / insertion failed')
-                
+
+async def update_picpurify_frame_flags(data):
+    # data = {'frame_no': '1', 'video_name': 'videoplayback.mp4', 'is_processed': 1}
+    statement = text(f"""UPDATE table_2 SET is_pic_purified=:is_pic_purified WHERE frame_no=:frame_no and video_name=:video_name""")
+    sess =  SessionLocal()
+    with sess.connection() as connection:
+        with connection.begin():
+            try:
+                connection.execute(statement, data)
+                print('please wait table 2 updateing frames')
+
+            except:
+                print('db connection not build / insertion failed')
 
 async def get_unprocessed_frame_url(data):
     # data = {'id':152, 'video_id':1}
     sess =  SessionLocal()
     with sess.connection() as con:
         statement = text("""SELECT * FROM table_2 WHERE id=:id and  video_id=:video_id and is_processed=0""")
+
+        try:
+            query_response = con.execute(statement, data)
+            # results = query_response.fetchall()
+            results = [{column: value for column, value in rowproxy.items()} for rowproxy in query_response]
+            print('please wait inserting frames')
+        except:
+            print('db connection not build / insertion failed')
+
+
+    bucket_name = 'frames'
+    minio_client = Minio(host, access_key=access_key, secret_key=secret_key, secure=False)
+    found = minio_client.bucket_exists(bucket_name)
+    if not found:
+        minio_client.make_bucket(bucket_name)
+    else:
+        print("Bucket 'videos' already exists")
+
+    try:
+        folder_name = results[0]['video_name']
+        frame_no = results[0]['frame_no']
+        image_cloud_path = os.path.join(folder_name, f"image_{frame_no}.jpg")
+        frame_url = minio_client.presigned_get_object(bucket_name, image_cloud_path, expires=datetime.timedelta(hours=48))
+        return frame_url
+    except:
+        print('file not uploaded')
+
+async def get_unprocessed_picpurify_frame_url(data):
+    # data = {'id':152, 'video_id':1}
+    sess =  SessionLocal()
+    with sess.connection() as con:
+        statement = text("""SELECT * FROM table_2 WHERE id=:id and  video_id=:video_id and is_pic_purified=0""")
 
         try:
             query_response = con.execute(statement, data)

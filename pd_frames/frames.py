@@ -78,6 +78,7 @@ async def extract_frames(video_path, video_id, overwrite=False, start=-1, end=-1
                            "file_path": save_path[0],
                            'is_processed': 0,
                            'is_ocr_processed':0,
+                           'is_pic_purified':0,
                            }
 
                 await asyncio.gather(
@@ -125,6 +126,7 @@ async def extract_frames(video_path, video_id, overwrite=False, start=-1, end=-1
                                "file_path": save_path[0],
                                "is_processed": 0,
                                "is_ocr_processed":0,
+                               'is_pic_purified':0,
                                }
 
                     print(results)

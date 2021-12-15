@@ -26,9 +26,15 @@ from detectron2.engine import DefaultPredictor
 from fastapi import HTTPException
 import time
 import aiofiles
+import aiohttp
+import json
 import gc
 
-from models import fetch_image_from_url, insert_object, update_frame_flags
+from models import (fetch_image_from_url,
+                    insert_object,
+                    update_detectron_frame_flags,
+                    fetch_image_from_url_rb,
+                    update_picpurify_frame_flags)
 # from detectron2.utils.visualizer import Visualizer
 from pdPredict import Visualizer
 
@@ -77,8 +83,29 @@ async def insert_detectron_object(frame_no, video_name, data, frame_id, video_id
     #             }
     await insert_object(response)
     update_data = {'frame_no':frame_no, 'video_name': video_name, 'is_processed':1}
-    await update_frame_flags(update_data)
-    # return response
+    await update_detectron_frame_flags(update_data)
+
+
+async def insert_picpurify_object(frame_no, video_name, data, frame_id, video_id):
+
+    # NEeed to pix this
+    response  = []
+    update_data = {'frame_no':frame_no, 'video_name': video_name, 'is_pic_purified':1}
+    if data['reject_criteria']:
+        for mod in data['reject_criteria']:
+            response.append({'frame_no':frame_no,
+                'frame_id':frame_id,
+                'video_id':video_id,
+                'video_name':video_name,
+                'object_':mod,
+                'attribute_':'confidence',
+                'value_': str(data[mod]['confidence_score']),
+                })
+
+        await insert_object(response)
+        await update_picpurify_frame_flags(update_data)
+    else:
+        await update_picpurify_frame_flags(update_data)
 
 async def get_image(main_file_path):
     im = cv2.imread(main_file_path)

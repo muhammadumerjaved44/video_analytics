@@ -13,7 +13,6 @@ isort
 pyodbc
 pytest
 python-decouple
-nltk
 easyocr
 pandas
 behave

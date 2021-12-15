@@ -43,4 +43,4 @@ RUN conda install $CONDA_PACKAGES
 
 RUN pip install -r requirements.txt
 
-RUN /bin/sh -c python -m nltk.downloader all
+RUN /bin/sh -c python -m nltk.downloader punkt

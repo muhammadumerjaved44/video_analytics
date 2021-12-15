@@ -2,18 +2,10 @@ import glob
 import random
 import re
 import string
-from collections import Counter
-
-import nltk
-
-nltk.download('punkt')
-# nltk.download('all')
 
 import asyncio
 import gc
-import json
 import time
-from pathlib import Path
 from urllib.parse import urlparse
 
 import aiofiles
@@ -22,7 +14,6 @@ import requests
 import torch
 from decouple import config
 from easyocr import Reader
-from fastapi import HTTPException
 from models import fetch_image_from_url, insert_object, update_frame_flags
 from nltk import word_tokenize
 from PIL import Image
@@ -68,14 +59,7 @@ def timeit(func):
     return helper
 
 async def insert_text_object(frame_no, video_name, video_id, frame_id, simple_ouput_text, simple_ouput_text_oprated):
-    # final_object  = {
-    #     'simple_ouput_text': simple_ouput_text[0],
-    #     'basic_text' : simple_ouput_text_oprated[0],
-    #     'bolb_based_text' : simple_ouput_text_oprated[0],
-    #     'word_base_text': simple_ouput_text_oprated[0]
-    # }
 
-    # response = {'frame_no': frame_no, 'video_name': video_name, 'text_': simple_ouput_text[0], 'ocr_object': json.dumps(final_object)}
     response = {'frame_id': frame_id, 'frame_no': frame_no, 'video_name': video_name, "video_id": video_id, 'object_': 'ocr', 'attribute_': 'text', 'value_': simple_ouput_text[0]}
     print('my responce ', response)
 

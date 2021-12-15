@@ -11,9 +11,6 @@ from models import get_unprocessed_ocr_frame_url
 from ocr import (basic_post_processing, bolb_based_post_processing,
                  easyocr_read, main_ocr, word_base_post_processing)
 
-# import nltk
-# # nltk.download('all')
-
 base_path = os.path.dirname(os.path.abspath(__file__))
 
 

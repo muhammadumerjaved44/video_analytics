@@ -55,5 +55,9 @@ Thumbs.db
 # cache files
 pd-frames/__pycache__
 
+#simple files
+*.csv
+*.tmp
+
 # enviorment file
 .env
