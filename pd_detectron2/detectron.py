@@ -177,6 +177,40 @@ async def pd_detectron2_cloud(main_file_url, frame_id, video_id):
     else:
         raise HTTPException(status_code=404, detail="text on an image not found")
 
+async def perform_picpurify(main_file_url, frame_id, video_id, moderation):
+
+    # API initialization params
+    PIC_PURIFY_API=config('PIC_PURIFY_API', cast=str)
+    PICPURIFY_ENDPOINT = config('PICPURIFY_ENDPOINT', cast=str)
+
+    frame_no = urlparse(main_file_url).path.split('_')[-1].split('.')[0]
+    video_name = urlparse(main_file_url).path.split('/')[-2]
+
+    file_image = await asyncio.gather(
+        asyncio.create_task(fetch_image_from_url_rb(video_name, frame_no))
+        )
+
+    async def make_api_asyc_call():
+        form_data = aiohttp.FormData()
+        form_data.add_field("API_KEY", PIC_PURIFY_API)
+        form_data.add_field("task", moderation)
+        form_data.add_field("file_image", file_image[0])
+
+        async with aiohttp.ClientSession(json_serialize=json.dumps) as session:
+                result_data = await session.post(PICPURIFY_ENDPOINT, data=form_data)
+                print(await result_data.json(content_type=None))
+                content = await result_data.json(content_type=None)
+        await session.close()
+        return content
+
+    content = await make_api_asyc_call()
+
+    await asyncio.gather(
+        asyncio.create_task(
+            insert_picpurify_object(frame_no, video_name, content, frame_id, video_id)
+        )
+    )
+
 
 if __name__ == "__main__":
     main_file_path = '000000439715.jpg'

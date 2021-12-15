@@ -4,13 +4,13 @@ from pathlib import Path
 
 import uvicorn
 from decouple import config
-from fastapi import (BackgroundTasks, Depends, FastAPI, Header, HTTPException,
-                     Request, Response)
+from fastapi import (BackgroundTasks, FastAPI, HTTPException,
+                     Request)
 from fastapi.openapi.utils import get_openapi
 from pydantic import BaseModel
 
-from detectron import pd_detectron2, pd_detectron2_cloud
-from models import get_unprocessed_frame_url
+from detectron import pd_detectron2, pd_detectron2_cloud, perform_picpurify
+from models import get_unprocessed_frame_url, get_unprocessed_picpurify_frame_url
 
 # from settings import Settings, get_settings
 
@@ -79,6 +79,36 @@ async def get_classes(background_tasks: BackgroundTasks, request: Request):
             }
     except:
         print('image not processed for some reason')
+
+
+@app.post("/pic_purify_api_frames", status_code=200, tags=["PicPurify API"])
+async def pic_purify_api_frames(background_tasks: BackgroundTasks, request: Request):
+
+    data = await request.json()
+
+    video_id = data['video_id']
+    frame_id = data['frame_id']
+    moderation  = data['moderation']
+
+    input_data = {'id':frame_id, 'video_id':video_id}
+    image_path = await get_unprocessed_picpurify_frame_url(input_data)
+
+    try:
+        if not image_path or len(image_path.strip()) == 0:
+            raise HTTPException(status_code=404, detail="image path is invalid or empty")
+        else:
+            background_tasks.add_task(perform_picpurify, image_path, frame_id, video_id, moderation)
+
+            return {
+                'response': 'soon the predictions will be compeleted',
+                'file_name': image_path,
+            }
+    except:
+        print('image not processed for some reason')
+    # print({'image_path': image_path, 'video_id': video_id, 'frame_id':frame_id, 'moderation':moderation })
+    return {'image_path': image_path, 'video_id': video_id, 'frame_id':frame_id, 'moderation':moderation }
+
+
 
 def custom_openapi():
     if app.openapi_schema:
