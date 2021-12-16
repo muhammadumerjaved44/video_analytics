@@ -32,9 +32,7 @@ import gc
 
 from models import (fetch_image_from_url,
                     insert_object,
-                    update_detectron_frame_flags,
-                    fetch_image_from_url_rb,
-                    update_picpurify_frame_flags)
+                    update_detectron_frame_flags)
 # from detectron2.utils.visualizer import Visualizer
 from pdPredict import Visualizer
 
@@ -68,44 +66,15 @@ def timeit(func):
 
 
 async def insert_detectron_object(frame_no, video_name, data, frame_id, video_id):
-    # final_object  = {
-    #     'data': [{"object": v1.split(" ")[0],"confidence": v1.split(" ")[1], 'class_lables': v2 }  for v1, v2 in  zip(data[0][3], data[0][2])],
-    #     'class_lable_list' : data[0][2],
-    #     # 'bbox_tensor' : data[0][0],
-    # }
+
     response = [{"frame_no":frame_no, 'frame_id': frame_id, \
         "video_name":video_name, "video_id": video_id, "object_": v1.split(" ")[0], 'attribute_': 'confidence', "value_": v1.split(" ")[-1]} \
         for v1, v2 in  zip(data[0][3], data[0][2])]
-    # response = {'frame_no': frame_no, 'video_name': video_name, 'video_id': video_id,
-    #             'object_':[{"object": v1.split(" ")[0],"confidence": v1.split(" ")[1], 'class_lables': v2 }  for v1, v2 in  zip(data[0][3], data[0][2])][0]['object'],
-    #             'value_': [{"object": v1.split(" ")[0],"confidence": v1.split(" ")[1], 'class_lables': v2 }  for v1, v2 in  zip(data[0][3], data[0][2])][0]['confidence'],
-    #             'detectron_object': json.dumps(final_object)
-    #             }
+
     await insert_object(response)
     update_data = {'frame_no':frame_no, 'video_name': video_name, 'is_processed':1}
     await update_detectron_frame_flags(update_data)
 
-
-async def insert_picpurify_object(frame_no, video_name, data, frame_id, video_id):
-
-    # NEeed to pix this
-    response  = []
-    update_data = {'frame_no':frame_no, 'video_name': video_name, 'is_pic_purified':1}
-    if data['reject_criteria']:
-        for mod in data['reject_criteria']:
-            response.append({'frame_no':frame_no,
-                'frame_id':frame_id,
-                'video_id':video_id,
-                'video_name':video_name,
-                'object_':mod,
-                'attribute_':'confidence',
-                'value_': str(data[mod]['confidence_score']),
-                })
-
-        await insert_object(response)
-        await update_picpurify_frame_flags(update_data)
-    else:
-        await update_picpurify_frame_flags(update_data)
 
 async def get_image(main_file_path):
     im = cv2.imread(main_file_path)
@@ -203,40 +172,6 @@ async def pd_detectron2_cloud(main_file_url, frame_id, video_id):
         return results[0]
     else:
         raise HTTPException(status_code=404, detail="text on an image not found")
-
-async def perform_picpurify(main_file_url, frame_id, video_id, moderation):
-
-    # API initialization params
-    PIC_PURIFY_API=config('PIC_PURIFY_API', cast=str)
-    PICPURIFY_ENDPOINT = config('PICPURIFY_ENDPOINT', cast=str)
-
-    frame_no = urlparse(main_file_url).path.split('_')[-1].split('.')[0]
-    video_name = urlparse(main_file_url).path.split('/')[-2]
-
-    file_image = await asyncio.gather(
-        asyncio.create_task(fetch_image_from_url_rb(video_name, frame_no))
-        )
-
-    async def make_api_asyc_call():
-        form_data = aiohttp.FormData()
-        form_data.add_field("API_KEY", PIC_PURIFY_API)
-        form_data.add_field("task", moderation)
-        form_data.add_field("file_image", file_image[0])
-
-        async with aiohttp.ClientSession(json_serialize=json.dumps) as session:
-                result_data = await session.post(PICPURIFY_ENDPOINT, data=form_data)
-                print(await result_data.json(content_type=None))
-                content = await result_data.json(content_type=None)
-        await session.close()
-        return content
-
-    content = await make_api_asyc_call()
-
-    await asyncio.gather(
-        asyncio.create_task(
-            insert_picpurify_object(frame_no, video_name, content, frame_id, video_id)
-        )
-    )
 
 
 if __name__ == "__main__":

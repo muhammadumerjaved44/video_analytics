@@ -46,7 +46,7 @@ async def trigger_Ocr_API(background_tasks: BackgroundTasks, db: Session = Depen
 
     start_time = time.time()
 
-    api_end_point =  f'http://{ip_address}:8050/online'
+    api_end_point =  f'http://{ip_address}:8003/online'
 
     async def make_api_asyc_call():
         async with aiohttp.ClientSession(json_serialize=json.dumps) as session:
@@ -72,7 +72,7 @@ async def trigger_detectron_API(background_tasks: BackgroundTasks, db: Session =
     print('total records fetched from db', len(results))
     start_time = time.time()
     # # tasks = []
-    api_end_point =  f'http://{ip_address}:8060/online'
+    api_end_point =  f'http://{ip_address}:8001/online'
 
     async def make_api_asyc_call():
         async with aiohttp.ClientSession(json_serialize=json.dumps) as session:
@@ -147,7 +147,7 @@ async def pic_purify_api(background_tasks: BackgroundTasks,
     print('total records fetched from db', len(results))
     start_time = time.time()
 
-    api_end_point =  f'http://{ip_address}:8060/pic_purify_api_frames'
+    api_end_point =  f'http://{ip_address}:8004/pic_purify_api_frames'
 
     async def make_api_asyc_call():
         async with aiohttp.ClientSession(json_serialize=json.dumps) as session:

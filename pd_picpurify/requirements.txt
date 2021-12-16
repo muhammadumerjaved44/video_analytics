@@ -1,0 +1,9 @@
+fastapi
+sniffio
+uvicorn[standard]
+SQLAlchemy
+pyodbc
+python-decouple
+minio
+aiofiles
+aiohttp
