@@ -1,0 +1,12 @@
+fastapi
+fastapi-sqlalchemy
+SQLAlchemy
+uvicorn[standard]
+python-decouple
+opencv-python
+cython
+aiohttp
+pyzbar
+minio
+aiofiles
+pyodbc

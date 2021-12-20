@@ -33,6 +33,7 @@ CREATE TABLE point_duty.dbo.table_2 (
 	is_processed tinyint DEFAULT 0 NULL,
 	is_ocr_processed tinyint DEFAULT 0 NULL,
 	is_pic_purified tinyint DEFAULT 0 NULL,
+	is_qr_processed tinyint DEFAULT 0 NULL,
 	CONSTRAINT PK_24 PRIMARY KEY (id,video_id),
 	CONSTRAINT FK_94 FOREIGN KEY (video_id) REFERENCES point_duty.dbo.table_3(id)
 );
