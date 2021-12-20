@@ -19,7 +19,7 @@ async def get_OCR_frames(db: Session):
 
     return data
 
-async def get_frames(db: Session):
+async def get_detectron_frames(db: Session):
     # data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'file_path':'umer'}
     with db.connection() as con:
         statement = text("""SELECT * from table_2 WHERE is_processed=0""")
@@ -46,6 +46,21 @@ async def get_picpurify_frames(db: Session):
             print('db connection not build / insertion failed')
 
     return data
+
+async def get_qr_frames(db: Session):
+    # data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'file_path':'umer'}
+    with db.connection() as con:
+        statement = text("""SELECT * from table_2 WHERE is_qr_processed=0""")
+
+        try:
+            query_response = con.execute(statement)
+            data = [{column: value for column, value in rowproxy.items()} for rowproxy in query_response]
+            print('please wait inserting frames')
+        except:
+            print('db connection not build / insertion failed')
+
+    return data
+
 
 
 async def get_predictions(db: Session):
@@ -83,7 +98,7 @@ async def insert_object(db: Session, data=None):
         print('data is missing to inesrt')
         # return
     # data = {'frame_no':0, 'frame_id':44820, 'video_id':12, 'video_name':'Bad_fire.mp4', 'object_':'object_', 'attribute_':'attribute_', 'value_': 'value_'}
-    
+
     statement = text("""INSERT INTO table_1 (frame_no, frame_id, video_id, video_name, object_, attribute_, value_) \
         VALUES (:frame_no, :frame_id, :video_id, :video_name, :object_, :attribute_, :value_)""")
 

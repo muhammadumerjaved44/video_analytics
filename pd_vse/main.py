@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from database import SessionLocal, engine
-from models import get_counts, get_frames, get_OCR_frames, get_predictions, get_picpurify_frames
+from models import get_detectron_frames, get_OCR_frames, get_picpurify_frames, get_qr_frames
 
 
 base_path = os.path.dirname(os.path.abspath(__file__))
@@ -36,7 +36,7 @@ def get_db():
 
 ip_address = config('MY_IP')
 
-@app.post("/ocr", status_code=200)
+@app.post("/ocr", status_code=200, tags=["OCR API"])
 async def trigger_Ocr_API(background_tasks: BackgroundTasks, db: Session = Depends(get_db), ):
     results = await get_OCR_frames(db)
     # for r in results:
@@ -63,9 +63,9 @@ async def trigger_Ocr_API(background_tasks: BackgroundTasks, db: Session = Depen
     # return {'result': all_frames}
     return {'Total_time': total_time, 'massage': 'prediction is initiated'}
 
-@app.post("/detectron2", status_code=200)
+@app.post("/detectron2", status_code=200, tags=["Detectron2 API"])
 async def trigger_detectron_API(background_tasks: BackgroundTasks, db: Session = Depends(get_db), ):
-    results = await get_frames(db)
+    results = await get_detectron_frames(db)
     # for r in results:
     #     print(r)
     # return(resp)
@@ -89,7 +89,7 @@ async def trigger_detectron_API(background_tasks: BackgroundTasks, db: Session =
     # return {'result': all_frames}
     return {'Total_time': total_time, 'massage': 'prediction is initiated'}
 
-@app.get("/frames", status_code=200)
+@app.get("/frames", status_code=200, tags=["Decord Frame API"])
 async def trigger_frames_API(video_path, background_tasks: BackgroundTasks, overwrite:bool=False, every:int=1):
     # video_path='video_download/sample_video.mp4'
     # overwrite=False
@@ -107,21 +107,6 @@ async def trigger_frames_API(video_path, background_tasks: BackgroundTasks, over
     total_time = end_time-start_time
 
     return {'Total_time': total_time, 'values': (video_path, overwrite, every, url)}
-
-@app.get("/all_frames", status_code=200)
-async def all_frames(db: Session = Depends(get_db)):
-    all_frames_list = await get_frames(db)
-    return {'response': all_frames_list}
-
-@app.get("/all_predictions", status_code=200)
-async def all_predictions(db: Session = Depends(get_db)):
-    all_data = await get_predictions(db)
-    return {'response': all_data}
-
-@app.get("/all_predictions_counts", status_code=200)
-async def all_predictions_counts(db: Session = Depends(get_db)):
-    all_count = await get_counts(db)
-    return {'response': all_count}
 
 
 @app.get("/pic_purify_api", status_code=200, tags=["PicPurify API"])
@@ -163,6 +148,33 @@ async def pic_purify_api(background_tasks: BackgroundTasks,
     # print(end_time-start_time)
     # return {'result': all_frames}
     return {'Total_time': total_time, 'massage': 'picpurify prediction is initiated'}
+
+
+@app.post("/perform_qr_code", status_code=200, tags=["Qr Code API"])
+async def perform_qr_code(background_tasks: BackgroundTasks, db: Session = Depends(get_db), ):
+    results = await get_qr_frames(db)
+    # for r in results:
+    #     print(r)
+    # return(resp)
+    print('total records fetched from db', len(results))
+    start_time = time.time()
+    # # tasks = []
+    api_end_point =  f'http://{ip_address}:8006/perform_qr_code_to_text'
+
+    async def make_api_asyc_call():
+        async with aiohttp.ClientSession(json_serialize=json.dumps) as session:
+            for result in results:
+                video_id = result['video_id']
+                frame_id = result['id']
+                await session.post(api_end_point, json={'frame_id': frame_id, 'video_id': video_id})
+            # await asyncio.gather(*tasks)
+        await session.close()
+    background_tasks.add_task(make_api_asyc_call)
+    end_time = time.time()
+    total_time = end_time-start_time
+    # print(end_time-start_time)
+    # return {'result': all_frames}
+    return {'Total_time': total_time, 'massage': 'prediction is initiated'}
 
 
 
