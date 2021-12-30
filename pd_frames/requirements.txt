@@ -13,6 +13,7 @@ decord
 minio
 Pillow
 python-multipart
-schedule
-aioschedule
 validators
+aiohttp
+aiofiles
+pathlib

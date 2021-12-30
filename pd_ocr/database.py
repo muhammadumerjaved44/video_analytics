@@ -10,11 +10,11 @@ from sqlalchemy.orm import sessionmaker
 # from sqlalchemy.ext.asyncio import create_async_engine
 # from sqlalchemy.ext.asyncio import AsyncSession
 
-db_host = config('MSSQL_LOCAL_HOST', default='192.168.20.200', cast=str)
-db_port = config('MSSQL_LOCAL_PORT', default=3306, cast=int)
-db_user = config('MSSQL_ROOT_USERNAME', default='root')
-db_pass = config('MSSQL_ROOT_PASSWORD', default='root')
-db_name = config('MSSQL_DB', default='point_duty')
+db_host = config("MSSQL_LOCAL_HOST", default="192.168.20.200", cast=str)
+db_port = config("MSSQL_LOCAL_PORT", default=3306, cast=int)
+db_user = config("MSSQL_ROOT_USERNAME", default="root")
+db_pass = config("MSSQL_ROOT_PASSWORD", default="root")
+db_name = config("MSSQL_DB", default="point_duty")
 
 
 engine = create_engine(
@@ -28,12 +28,12 @@ engine = create_engine(
         port=db_port,  # e.g. 3306
         database=db_name,  # e.g. "my-database-name"
         query={
-        "driver": "ODBC Driver 17 for SQL Server", # make sure install mssql in local/docker
+            "driver": "ODBC Driver 17 for SQL Server",  # make sure install mssql in local/docker
         },
     ),
     echo=True,
     pool_size=2,
-    pool_pre_ping=True
+    pool_pre_ping=True,
 )
 
 SessionLocal = sessionmaker(autocommit=True, autoflush=False, bind=engine)

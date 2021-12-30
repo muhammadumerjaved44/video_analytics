@@ -1,10 +1,9 @@
+import asyncio
+import gc
 import glob
 import random
 import re
 import string
-
-import asyncio
-import gc
 import time
 from urllib.parse import urlparse
 
@@ -24,47 +23,74 @@ gc.collect()
 torch.cuda.empty_cache()
 
 
-if not config('DOCKER_ENABLE', cast=bool):
-    print('running from gpu')
-    langs = ['en']
+if not config("DOCKER_ENABLE", cast=bool):
+    print("running from gpu")
+    langs = ["en"]
     reader = Reader(langs, gpu=True)
 else:
-    langs = ['en']
+    langs = ["en"]
     reader = Reader(langs)
 
 time_list = []
 
+
 def timeit(func):
     async def process(func, *args, **params):
         if asyncio.iscoroutinefunction(func):
-            print('this function is a coroutine: {}'.format(func.__name__))
+            print("this function is a coroutine: {}".format(func.__name__))
             return await func(*args, **params)
         else:
-            print('this is not a coroutine')
+            print("this is not a coroutine")
             return func(*args, **params)
 
     async def helper(*args, **params):
-        print('{}.time'.format(func.__name__))
+        print("{}.time".format(func.__name__))
         start = time.time()
         result = await process(func, *args, **params)
 
         # Test normal function route...
         # result = await process(lambda *a, **p: print(*a, **p), *args, **params)
         final_time = time.time() - start
-        async with aiofiles.open('time_data.txt', mode='a') as f:
-            await f.write(f'\n{final_time},')
-        print('\n\n\nTotal execution time for this function = {} >>>'.format(func.__name__),final_time, '\n\n\n')
+        async with aiofiles.open("time_data.txt", mode="a") as f:
+            await f.write(f"\n{final_time},")
+        print(
+            "\n\n\nTotal execution time for this function = {} >>>".format(
+                func.__name__
+            ),
+            final_time,
+            "\n\n\n",
+        )
         return result, final_time
 
     return helper
 
-async def insert_text_object(frame_no, video_name, video_id, frame_id, simple_ouput_text, simple_ouput_text_oprated):
 
-    response = {'frame_id': frame_id, 'frame_no': frame_no, 'video_name': video_name, "video_id": video_id, 'object_': 'ocr', 'attribute_': 'text', 'value_': simple_ouput_text[0]}
-    print('my responce ', response)
+async def insert_text_object(
+    frame_no,
+    video_name,
+    video_id,
+    frame_id,
+    simple_ouput_text,
+    simple_ouput_text_oprated,
+):
+
+    response = {
+        "frame_id": frame_id,
+        "frame_no": frame_no,
+        "video_name": video_name,
+        "video_id": video_id,
+        "object_": "ocr",
+        "attribute_": "text",
+        "value_": simple_ouput_text[0],
+    }
+    print("my responce ", response)
 
     await insert_object(response)
-    update_data = {'frame_no':frame_no, 'video_name': video_name, 'is_ocr_processed':1}
+    update_data = {
+        "frame_no": frame_no,
+        "video_name": video_name,
+        "is_ocr_processed": 1,
+    }
     await update_frame_flags(update_data)
 
 
@@ -78,7 +104,9 @@ def random_string(N=6) -> str:
         str: resturn 6 letters random string
     """
 
-    return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(N))
+    return "".join(
+        random.choice(string.ascii_uppercase + string.digits) for _ in range(N)
+    )
 
 
 async def deepstack_image_discription(image_path: str) -> str:
@@ -93,7 +121,8 @@ async def deepstack_image_discription(image_path: str) -> str:
 
     image_data = open(image_path, "rb").read()
     response = requests.post(
-        "http://localhost:5123/v1/vision/scene", files={"image": image_data}).json()
+        "http://localhost:5123/v1/vision/scene", files={"image": image_data}
+    ).json()
     # print("Label:",response["label"])
     # print(response)
 
@@ -110,14 +139,29 @@ async def basic_post_processing(results: list) -> str:
         str: correted string
     """
 
-    rep = {'\n': ' ', '\\': ' ', '\"': '"', '-': ' ', '"': ' " ',
-           '"': ' " ', '"': ' " ', ',': ' , ', '.': ' . ', '!': ' ! ',
-           '?': ' ? ', "n't": " not", "'ll": " will", '*': ' * ',
-           '(': ' ( ', ')': ' ) ', "s'": "s '", "&": " and"}
+    rep = {
+        "\n": " ",
+        "\\": " ",
+        '"': '"',
+        "-": " ",
+        '"': ' " ',
+        '"': ' " ',
+        '"': ' " ',
+        ",": " , ",
+        ".": " . ",
+        "!": " ! ",
+        "?": " ? ",
+        "n't": " not",
+        "'ll": " will",
+        "*": " * ",
+        "(": " ( ",
+        ")": " ) ",
+        "s'": "s '",
+        "&": " and",
+    }
     rep = dict((re.escape(k), v) for k, v in rep.items())
     pattern = re.compile("|".join(rep.keys()))
-    basic_correction = pattern.sub(
-        lambda m: rep[re.escape(m.group(0))], results)
+    basic_correction = pattern.sub(lambda m: rep[re.escape(m.group(0))], results)
 
     return basic_correction
 
@@ -133,17 +177,17 @@ async def bolb_based_post_processing(results: list) -> str:
     """
 
     results_data = await basic_post_processing(results)
+
     def find_blob(results_data):
-        textBlb = TextBlob(results_data)            # Making our first textblob
-        textCorrected = str(textBlb.correct())   # Correcting the text
+        textBlb = TextBlob(results_data)  # Making our first textblob
+        textCorrected = str(textBlb.correct())  # Correcting the text
         textCorrected = textCorrected.strip()  # clean up spaces
-        blob_based_correction = re.sub(
-            '\s{2,}', ' ', textCorrected)  # clean up spaces
+        blob_based_correction = re.sub("\s{2,}", " ", textCorrected)  # clean up spaces
 
         return blob_based_correction
+
     blob_based_correction = find_blob(results_data)
     return blob_based_correction
-
 
 
 async def word_base_post_processing(results: list) -> str:
@@ -159,11 +203,11 @@ async def word_base_post_processing(results: list) -> str:
     results_data = await basic_post_processing(results)
     word_list = word_tokenize(results_data)
     correct_phrase_list = [correction(x) for x in word_list]
-    word_based_correction = " ".join(correct_phrase_list).replace(
-        '/', '').replace('\\', '').lower()
+    word_based_correction = (
+        " ".join(correct_phrase_list).replace("/", "").replace("\\", "").lower()
+    )
 
     return word_based_correction
-
 
 
 async def easyocr_read(file: str, reader: object) -> str:
@@ -179,7 +223,7 @@ async def easyocr_read(file: str, reader: object) -> str:
 
     results = reader.readtext(file)
     if not (results) or not len(results) > 0:
-        print('text not found', results)
+        print("text not found", results)
         return results
         # raise HTTPException(status_code=200, detail="no text found on the image")
         # img = Image.open(image_path)
@@ -187,42 +231,52 @@ async def easyocr_read(file: str, reader: object) -> str:
     else:
         results = sorted(results, key=lambda x: x[0][0])
         text_results = [x[-2] for x in results]  # get text
-        easy_output = " ".join(text_results).replace(
-            '/', '').replace('\\', '').lower()  # join together
+        easy_output = (
+            " ".join(text_results).replace("/", "").replace("\\", "").lower()
+        )  # join together
         easy_output = easy_output.strip()  # clean up spaces
-        simple_ouput_text = re.sub('\s{2,}', ' ', easy_output)  # clean up spaces
+        simple_ouput_text = re.sub("\s{2,}", " ", easy_output)  # clean up spaces
 
         return simple_ouput_text
-async  def all_processing(text, frame_no, video_name):
+
+
+async def all_processing(text, frame_no, video_name):
 
     result = {frame_no, video_name}
 
 
 @timeit
 async def main_ocr(main_file_url, frame_id, video_id):
-    frame_no = urlparse(main_file_url).path.split('_')[-1].split('.')[0]
-    video_name = urlparse(main_file_url).path.split('/')[-2]
+    frame_no = urlparse(main_file_url).path.split("_")[-1].split(".")[0]
+    video_name = urlparse(main_file_url).path.split("/")[-2]
     image = await asyncio.gather(
-            asyncio.create_task(fetch_image_from_url(video_name, frame_no))
-        )
+        asyncio.create_task(fetch_image_from_url(video_name, frame_no))
+    )
     print(image)
     simple_ouput_text = await asyncio.gather(
-                asyncio.create_task(easyocr_read(image[0], reader))
-            )
+        asyncio.create_task(easyocr_read(image[0], reader))
+    )
     if len(simple_ouput_text) > 0:
-        simple_ouput_text = ['']
-        simple_ouput_text_oprated = ['', '', '']
+        simple_ouput_text = [""]
+        simple_ouput_text_oprated = ["", "", ""]
     else:
-       simple_ouput_text_oprated = await asyncio.gather(
-                asyncio.create_task(basic_post_processing(simple_ouput_text[0])),
-                asyncio.create_task(bolb_based_post_processing(simple_ouput_text[0])),
-                asyncio.create_task(word_base_post_processing(simple_ouput_text[0])),
-            )
+        simple_ouput_text_oprated = await asyncio.gather(
+            asyncio.create_task(basic_post_processing(simple_ouput_text[0])),
+            asyncio.create_task(bolb_based_post_processing(simple_ouput_text[0])),
+            asyncio.create_task(word_base_post_processing(simple_ouput_text[0])),
+        )
     print(simple_ouput_text_oprated)
 
     await asyncio.gather(
         asyncio.create_task(
-            insert_text_object(frame_no, video_name, video_id, frame_id, simple_ouput_text, simple_ouput_text_oprated)
+            insert_text_object(
+                frame_no,
+                video_name,
+                video_id,
+                frame_id,
+                simple_ouput_text,
+                simple_ouput_text_oprated,
+            )
         )
     )
     gc.collect()
@@ -230,7 +284,7 @@ async def main_ocr(main_file_url, frame_id, video_id):
 
 
 if __name__ == "__main__":
-    image_dir_path = 'img/*.jpg'
+    image_dir_path = "img/*.jpg"
 
     image_paths = glob.glob(image_dir_path)
 
@@ -253,8 +307,13 @@ if __name__ == "__main__":
         # Deep stack scene discription
         deepstack_text = deepstack_image_discription(image_path)
 
-        print(simple_ouput_text, basic_correction, blob_based_correction,
-              word_based_correction, deepstack_text)
+        print(
+            simple_ouput_text,
+            basic_correction,
+            blob_based_correction,
+            word_based_correction,
+            deepstack_text,
+        )
 
         image_path_list.append(image_path)
         simple_ouput_text_list.append(simple_ouput_text)
@@ -265,18 +324,23 @@ if __name__ == "__main__":
 
         img = Image.open(image_path)
         try:
-            img.save('image_text/'+simple_ouput_text +
-                     " | "+word_based_correction+'.jpg')
+            img.save(
+                "image_text/"
+                + simple_ouput_text
+                + " | "
+                + word_based_correction
+                + ".jpg"
+            )
         except:
-            print('file not saved')
+            print("file not saved")
 
     details = {
-        'image_path': image_path_list,
-        'simple_ouput_text': simple_ouput_text_list,
-        'basic_correction': basic_correction_list,
-        'blob_based_correction': blob_based_correction_list,
-        'word_based_correction': word_based_correction_list,
-        'deepstack_text': deepstack_text_list,
+        "image_path": image_path_list,
+        "simple_ouput_text": simple_ouput_text_list,
+        "basic_correction": basic_correction_list,
+        "blob_based_correction": blob_based_correction_list,
+        "word_based_correction": word_based_correction_list,
+        "deepstack_text": deepstack_text_list,
     }
     df = pd.DataFrame(details)
-    df.to_csv('text_results.csv')
+    df.to_csv("text_results.csv")
