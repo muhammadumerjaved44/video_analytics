@@ -39,3 +39,5 @@ ENV CONDA_PACKAGES="-c anaconda pyodbc"
 RUN conda install $CONDA_PACKAGES
 
 RUN pip install -r requirements.txt
+
+COPY . /code

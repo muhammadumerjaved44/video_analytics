@@ -8,8 +8,12 @@ yml
 opencv-python
 cython
 wget
-pymongo
 schedule
 kafka-python
 aiohttp
-httpx>=0.18.2
+python-multipart
+celery
+flower
+redis
+pika
+timeloop
