@@ -23,6 +23,7 @@ from fastapi import (
 from fastapi.openapi.utils import get_openapi
 
 from frames import video_to_frames
+from helper import snake_case
 from models import (
     check_any_videos_left,
     check_in_progress_videos,
@@ -202,7 +203,8 @@ async def copyfile_into_local_folder(video_file_list, dir_name):
 
     file_location_list = []
     for video_file in video_file_list:
-        file_location = os.path.join(base_path, dir_name, str(video_file.filename))
+        file_name = await snake_case(video_file.filename)
+        file_location = os.path.join(base_path, dir_name, str(file_name))
         file_location_list.append(file_location)
         print("\n\n\n\n", file_location)
         with open(file_location, mode="wb+") as file_object:

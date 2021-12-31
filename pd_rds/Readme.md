@@ -10,6 +10,7 @@ The point duty database service is used by the Frames, Detectron and OCR API
     ├── docker-compose.yml
     ├── Dockerfile
     ├── entrypoint.sh
+    ├── Readme.md
     └── setup.sql
 
 # Setup .Env File
@@ -54,13 +55,23 @@ Run this command in the terminal
 
 ## Create tables using `database/db.sql` file
 
-    CREATE TABLE point_duty.dbo.table_1 (
-        id int IDENTITY(1,1) NOT NULL,
-        frame_no varchar(30) COLLATE SQL_Latin1_General_CP1_CI_AS NOT NULL,
-        video_name varchar(255) COLLATE SQL_Latin1_General_CP1_CI_AS NOT NULL,
-        detectron_object text COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
-        ocr_object text COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
-        CONSTRAINT PK__table_1__3213E83F62FC9096 PRIMARY KEY (id)
+    -- DROP SCHEMA dbo;
+
+    --CREATE SCHEMA dbo;
+    -- point_duty.dbo.table_3 definition
+
+    -- Drop table
+
+    -- DROP TABLE point_duty.dbo.table_3;
+
+    CREATE TABLE point_duty.dbo.table_3 (
+        id bigint IDENTITY(1,1) NOT NULL,
+        video_name varchar(255) COLLATE Latin1_General_BIN NOT NULL,
+        version_id varchar(100) COLLATE Latin1_General_BIN NOT NULL,
+        is_video_processed tinyint DEFAULT 0 NULL,
+        is_in_progress tinyint DEFAULT 0 NULL,
+        video_url text COLLATE Latin1_General_BIN NOT NULL,
+        CONSTRAINT PK_26 PRIMARY KEY (id)
     );
 
 
@@ -71,11 +82,41 @@ Run this command in the terminal
     -- DROP TABLE point_duty.dbo.table_2;
 
     CREATE TABLE point_duty.dbo.table_2 (
-        id int IDENTITY(1,1) NOT NULL,
-        frame_no varchar(30) COLLATE Latin1_General_BIN NOT NULL,
+        id bigint IDENTITY(0,1) NOT NULL,
+        video_id bigint NOT NULL,
+        frame_no varchar(255) COLLATE Latin1_General_BIN NOT NULL,
         video_name varchar(255) COLLATE Latin1_General_BIN NOT NULL,
-        file_path varchar(255) COLLATE Latin1_General_BIN NOT NULL,
+        file_path text COLLATE Latin1_General_BIN NOT NULL,
         is_processed tinyint DEFAULT 0 NULL,
         is_ocr_processed tinyint DEFAULT 0 NULL,
-        CONSTRAINT PK__table_2__3213E83F1E6B5C2C PRIMARY KEY (id)
+        is_pic_purified tinyint DEFAULT 0 NULL,
+        is_qr_processed tinyint DEFAULT 0 NULL,
+        CONSTRAINT PK_24 PRIMARY KEY (id,video_id),
+        CONSTRAINT FK_94 FOREIGN KEY (video_id) REFERENCES point_duty.dbo.table_3(id)
     );
+    CREATE NONCLUSTERED INDEX FK_96 ON dbo.table_2 (  video_id ASC  )
+        WITH (  PAD_INDEX = OFF ,FILLFACTOR = 100  ,SORT_IN_TEMPDB = OFF , IGNORE_DUP_KEY = OFF , STATISTICS_NORECOMPUTE = OFF , ONLINE = OFF , ALLOW_ROW_LOCKS = ON , ALLOW_PAGE_LOCKS = ON  )
+        ON [PRIMARY ] ;
+
+
+    -- point_duty.dbo.table_1 definition
+
+    -- Drop table
+
+    -- DROP TABLE point_duty.dbo.table_1;
+
+    CREATE TABLE point_duty.dbo.table_1 (
+        id bigint IDENTITY(0,1) NOT NULL,
+        frame_id bigint NOT NULL,
+        video_id bigint NOT NULL,
+        frame_no varchar(255) COLLATE SQL_Latin1_General_CP1_CI_AS NOT NULL,
+        video_name varchar(255) COLLATE SQL_Latin1_General_CP1_CI_AS NOT NULL,
+        object_ varchar(100) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
+        attribute_ varchar(100) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
+        value_ text COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
+        CONSTRAINT PK__table_1__3213E83F62FC9096 PRIMARY KEY (id,frame_id,video_id),
+        CONSTRAINT FK_85 FOREIGN KEY (frame_id,video_id) REFERENCES point_duty.dbo.table_2(id,video_id)
+    );
+    CREATE NONCLUSTERED INDEX FK_88 ON dbo.table_1 (  frame_id ASC  , video_id ASC  )
+        WITH (  PAD_INDEX = OFF ,FILLFACTOR = 100  ,SORT_IN_TEMPDB = OFF , IGNORE_DUP_KEY = OFF , STATISTICS_NORECOMPUTE = OFF , ONLINE = OFF , ALLOW_ROW_LOCKS = ON , ALLOW_PAGE_LOCKS = ON  )
+        ON [PRIMARY ] ;
