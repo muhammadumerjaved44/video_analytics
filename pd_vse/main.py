@@ -8,6 +8,7 @@ from typing import List
 import aiohttp
 import requests
 import uvicorn
+from asgiref.sync import async_to_sync
 from decouple import config
 from fastapi import BackgroundTasks, Depends, FastAPI, Query
 
@@ -26,6 +27,7 @@ from celery_worker import (
 )
 from database import SessionLocal, engine
 from models import (
+    check_in_progress_videos,
     get_detectron_frames,
     get_ocr_frames,
     get_picpurify_frames,
@@ -241,6 +243,10 @@ def run_ocr_service():
     while not task.ready():
         pass
     if task.get() == []:
+        is_progress = async_to_sync(check_in_progress_videos)()
+        if is_progress:
+            time.sleep(60)
+            count_ocr_tries = 0
         count_ocr_tries = count_ocr_tries + 1
         if count_ocr_tries == 2:
             ocr_task.stop()
@@ -255,6 +261,10 @@ def run_detectron_service():
     while not task.ready():
         pass
     if task.get() == []:
+        is_progress = async_to_sync(check_in_progress_videos)()
+        if is_progress:
+            time.sleep(60)
+            count_detectron_tries = 0
         count_detectron_tries = count_detectron_tries + 1
         if count_detectron_tries == 2:
             detectron_task.stop()
@@ -271,6 +281,10 @@ def run_picpurify_service(moderation: dict):
     while not task.ready():
         pass
     if task.get() == []:
+        is_progress = async_to_sync(check_in_progress_videos)()
+        if is_progress:
+            time.sleep(60)
+            count_picpurify_tries = 0
         count_picpurify_tries = count_picpurify_tries + 1
         if count_picpurify_tries == 2:
             picpurify_task.stop()
@@ -285,6 +299,10 @@ def run_qr_service():
     while not task.ready():
         pass
     if task.get() == []:
+        is_progress = async_to_sync(check_in_progress_videos)()
+        if is_progress:
+            time.sleep(60)
+            count_qr_tries = 0
         count_qr_tries = count_qr_tries + 1
         if count_qr_tries == 2:
             qr_task.stop()

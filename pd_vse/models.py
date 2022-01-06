@@ -1,6 +1,7 @@
-from database import SessionLocal, engine
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
+
+from database import SessionLocal, engine
 
 # ses = SessionLocal()
 
@@ -12,10 +13,7 @@ async def get_ocr_frames(db: Session):
 
         try:
             query_response = con.execute(statement)
-            data = [
-                {column: value for column, value in rowproxy.items()}
-                for rowproxy in query_response
-            ]
+            data = [{column: value for column, value in rowproxy.items()} for rowproxy in query_response]
             print("please wait inserting frames")
         except:
             print("db connection not build / insertion failed")
@@ -30,10 +28,7 @@ async def get_detectron_frames(db: Session):
 
         try:
             query_response = con.execute(statement)
-            data = [
-                {column: value for column, value in rowproxy.items()}
-                for rowproxy in query_response
-            ]
+            data = [{column: value for column, value in rowproxy.items()} for rowproxy in query_response]
             print("please wait inserting frames")
         except:
             print("db connection not build / insertion failed")
@@ -48,10 +43,7 @@ async def get_picpurify_frames(db: Session):
 
         try:
             query_response = con.execute(statement)
-            data = [
-                {column: value for column, value in rowproxy.items()}
-                for rowproxy in query_response
-            ]
+            data = [{column: value for column, value in rowproxy.items()} for rowproxy in query_response]
             print("please wait inserting frames")
         except:
             print("db connection not build / insertion failed")
@@ -66,10 +58,7 @@ async def get_qr_frames(db):
 
         try:
             query_response = con.execute(statement)
-            data = [
-                {column: value for column, value in rowproxy.items()}
-                for rowproxy in query_response
-            ]
+            data = [{column: value for column, value in rowproxy.items()} for rowproxy in query_response]
             print("please wait inserting frames")
         except:
             print("db connection not build / insertion failed")
@@ -130,3 +119,22 @@ async def insert_object(db: Session, data=None):
             except:
                 print("db connection not build / insertion failed")
                 # return False
+
+
+async def check_in_progress_videos():
+    sess = SessionLocal()
+    with sess.connection() as con:
+        statement = text("""SELECT TOP(1) * FROM table_3 WHERE is_in_progress=1""")
+        try:
+            results = con.execute(statement)
+            data = results.fetchall()
+            if len(data) > 0:
+                is_in_progress = True
+            else:
+                is_in_progress = False
+            print("please getting unprocessed frames")
+            # return True
+        except:
+            print("db connection not build / insertion failed")
+
+    return is_in_progress

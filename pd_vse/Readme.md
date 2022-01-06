@@ -36,13 +36,13 @@ Place **.env** file relative to the **docker-compose.yaml**
     MSSQL_LOCAL_PORT=1433
     MSSQL_DOCKER_PORT=1433
 
-
 ## Run for the first time
+
 Open terminal relative to the **docker-compose.yml**
 `$ docker-compose up --build`
 
 **Hit on the local server**
-[http://localhost:8080](http://localhost:8080)
+[http://localhost:8000](http://localhost:8000)
 
     system=MS SQL beta
     server=point_duty
@@ -50,6 +50,7 @@ Open terminal relative to the **docker-compose.yml**
     password=7ellowEl7akey
 
 ## Simple Run
+
 Run this command in the terminal
 `$ docker-compose up`
 
