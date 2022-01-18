@@ -1,0 +1,253 @@
+version: '2.3'
+
+x-minio-common: &minio-common
+  container_name: x-minio-common
+  image: quay.io/minio/minio:RELEASE.2021-11-09T03-21-45Z
+  command: server --console-address ":${MINIO_SECOENDRY_PORT}" http://minio{1...4}/data{1...2}
+  expose:
+    - "${MINIO_MAIN_PORT}"
+    - "${MINIO_SECOENDRY_PORT}"
+  environment:
+    MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+    MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    MINIO_DOMAIN: pd-domain.com
+    MINIO_PUBLIC_IPS: 192.168.20.200
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:${MINIO_MAIN_PORT}/minio/health/live"]
+    interval: 30s
+    timeout: 20s
+    retries: 3
+
+
+services:
+
+
+
+  pd-detectron:
+    container_name: pd-detectron
+    build: ./pd_detectron2
+    stdin_open: true
+    runtime: nvidia
+    shm_size: "3gb"
+    tty: true
+    restart: always
+    command: uvicorn main:app --host 0.0.0.0 --reload
+    volumes:
+      - ./pd_detectron2:/code
+    ports:
+      - '${FASTAPI_DETECTRON_LOCAL_PORT}:${FASTAPI_DETECTRON_DOCKER_PORT}'
+    env_file: ./pd_detectron2/.env
+    environment:
+      # detectron2 env
+      POINT_DUTY_ENV: ${POINT_DUTY_ENV}
+      NVIDIA_VISIBLE_DEVICES: all
+
+  pd-frames:
+    container_name: pd-frames
+    # image:
+    build: ./pd_frames
+    stdin_open: true
+    tty: true
+    restart: always
+    command: uvicorn main:app --host 0.0.0.0 --reload
+    volumes:
+      - ./pd_frames:/code
+    ports:
+      - '${FASTAPI_FRAMES_LOCAL_PORT}:${FASTAPI_FRAMES_DOCKER_PORT}'
+    env_file:
+      - ./pd_frames/.env
+    environment:
+      # detectron2 env
+      POINT_DUTY_ENV: ${POINT_DUTY_ENV}
+
+  pd-ocr:
+    container_name: pd-ocr
+    # image:
+    build: ./pd_ocr
+    stdin_open: true
+    tty: true
+    restart: always
+    command: uvicorn main:app --host 0.0.0.0 --reload
+    volumes:
+      - ./pd_ocr:/code
+    ports:
+      - ${FASTAPI_OCR_LOCAL_PORT}:${FASTAPI_OCR_DOCKER_PORT}
+    runtime: nvidia
+    shm_size: "3gb"
+
+    environment:
+      # python env
+      POINT_DUTY_ENV: ${POINT_DUTY_ENV}
+      NVIDIA_VISIBLE_DEVICES: all
+
+  pd-picpurify:
+    container_name: pd-picpurify
+    # image:
+    build: ./pd_picpurify
+    stdin_open: true
+    tty: true
+    restart: always
+    command: uvicorn main:app --host 0.0.0.0 --reload
+    volumes:
+      - ./pd_picpurify:/code
+    ports:
+      - '${FASTAPI_PICPURIFY_LOCAL_PORT}:${FASTAPI_PICPURIFY_DOCKER_PORT}'
+
+    environment:
+      # picpurify env
+      POINT_DUTY_ENV: ${POINT_DUTY_ENV}
+      NVIDIA_VISIBLE_DEVICES: all
+
+  pd-qr:
+    container_name: pd-qr
+    # image:
+    build: ./pd_qr
+    stdin_open: true
+    tty: true
+    restart: always
+    command: uvicorn main:app --host 0.0.0.0 --reload
+    volumes:
+      - ./pd_qr:/code
+    ports:
+      - '${FASTAPI_QR_LOCAL_PORT}:${FASTAPI_QR_DOCKER_PORT}'
+
+    environment:
+      # detectron2 env
+      POINT_DUTY_ENV: ${POINT_DUTY_ENV}
+
+  point-duty-mssql:
+    build: ./pd_rds
+    image: mcmoe/mssqldocker:v2017.CU24.0
+    environment:
+      ACCEPT_EULA: Y
+      SA_PASSWORD: ${SA_PASSWORD}
+      MSSQL_DB: ${MSSQL_DB}
+      MSSQL_USER: ${MSSQL_ROOT_USERNAME}
+      MSSQL_PASSWORD: ${MSSQL_ROOT_PASSWORD}
+    ports:
+      - "${MSSQL_LOCAL_PORT}:${MSSQL_DOCKER_PORT}"
+    container_name: point-duty-mssql
+
+  pd-vid_search_engin:
+    container_name: pd-vid_search_engin
+    # image:
+    build: ./pd_vse
+    stdin_open: true
+    tty: true
+    restart: always
+    command: uvicorn main:app --host 0.0.0.0 --reload
+    volumes:
+      - ./pd_vse:/code
+    ports:
+      - '${FASTAPI_VSE_LOCAL_PORT}:${FASTAPI_VSE_DOCKER_PORT}'
+
+    environment:
+      # vid_search_engin env
+      POINT_DUTY_ENV: ${POINT_DUTY_ENV}
+
+  redis:
+    container_name: redis
+    image: redis:6.2-alpine
+    ports:
+      - "6377:6379"
+  celery_worker:
+    container_name: celery_worker
+    build: ./pd_vse
+    command: celery -A celery_worker.celery worker --loglevel=info
+    user: "1000:1000"
+    restart: always
+    volumes:
+      - ./pd_vse:/code
+    environment:
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+    depends_on:
+      - pd-vid_search_engin
+      - redis
+    links:
+      - redis
+
+  flower:
+    container_name: flower
+    build: ./pd_vse
+    command: celery -A celery_worker.celery flower --port=5555
+    user: "1000:1000"
+    restart: always
+    ports:
+      - 5556:5555
+    environment:
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+    links:
+      - redis
+      - celery_worker
+      - pd-vid_search_engin
+    depends_on:
+      - pd-vid_search_engin
+      - redis
+      - celery_worker
+
+
+
+  # starts 4 docker containers running minio server instances.
+  # using nginx reverse proxy, load balancing, you can access
+  # it through port 9000.
+
+  minio1:
+    <<: *minio-common
+    hostname: minio1
+    container_name: minio1
+    volumes:
+      - data1-1:/data1
+      - data1-2:/data2
+
+  minio2:
+    <<: *minio-common
+    hostname: minio2
+    container_name: minio2
+    volumes:
+      - data2-1:/data1
+      - data2-2:/data2
+
+  minio3:
+    <<: *minio-common
+    hostname: minio3
+    container_name: minio3
+    volumes:
+      - data3-1:/data1
+      - data3-2:/data2
+
+  minio4:
+    <<: *minio-common
+    hostname: minio4
+    container_name: minio4
+    volumes:
+      - data4-1:/data1
+      - data4-2:/data2
+
+  nginx:
+    image: nginx:1.19.2-alpine
+    container_name: nginx
+    hostname: nginx
+    volumes:
+      - ./pd_minio/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "${MINIO_MAIN_PORT}:${MINIO_MAIN_PORT}"
+      - "${MINIO_SECOENDRY_PORT}:${MINIO_SECOENDRY_PORT}"
+    depends_on:
+      - minio1
+      - minio2
+      - minio3
+      - minio4
+
+## By default this config uses default local driver,
+## For custom volumes replace with volume driver configuration.
+volumes:
+  data1-1:
+  data1-2:
+  data2-1:
+  data2-2:
+  data3-1:
+  data3-2:
+  data4-1:
+  data4-2:
