@@ -80,12 +80,13 @@ async def trigger_ocr_API(
     api_end_point = f"http://{ip_address}:8003/online"
 
     async def make_api_asyc_call():
+        # connector = aiohttp.TCPConnector(force_close=True)
         async with aiohttp.ClientSession(json_serialize=json.dumps) as session:
-            for result in results:
+            for result in results[0:1]:
                 video_id = result["video_id"]
                 frame_id = result["id"]
-                await session.post(api_end_point, json={"frame_id": frame_id, "video_id": video_id})
-        await session.close()
+            await session.post(api_end_point, json={"frame_id": frame_id, "video_id": video_id})
+        # await session.close()
         # await asyncio.gather(*tasks)
 
     background_tasks.add_task(make_api_asyc_call)

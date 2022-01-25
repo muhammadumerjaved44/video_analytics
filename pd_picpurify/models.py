@@ -1,10 +1,11 @@
 import datetime
 import os
 
-from database import SessionLocal
 from decouple import config
 from minio import Minio
 from sqlalchemy.sql import text
+
+from database import SessionLocal
 
 host = config("MINIO_HOST", cast=str)
 access_key = config("MINIO_ACCESS_KEY", cast=str)
@@ -13,9 +14,7 @@ bucket_name = config("MINIO_BUCKET_NAME", cast=str)
 
 
 async def fetch_image_from_url_rb(video_name, frame_no):
-    minio_client = Minio(
-        host, access_key=access_key, secret_key=secret_key, secure=False
-    )
+    minio_client = Minio(host, access_key=access_key, secret_key=secret_key, secure=False)
     found = minio_client.bucket_exists(bucket_name)
     if not found:
         minio_client.make_bucket(bucket_name)
@@ -42,7 +41,7 @@ async def insert_object(data=None):
         # return
     # id	frame_no	video_id	video_name	detectron_object	ocr_object
     statement = text(
-        """INSERT INTO table_1 (frame_no, frame_id, video_id, video_name, object_, attribute_, value_) \
+        """INSERT INTO frame_data (frame_no, frame_id, video_id, video_name, object_, attribute_, value_) \
         VALUES (:frame_no, :frame_id, :video_id, :video_name, :object_, :attribute_, :value_)"""
     )
 
@@ -62,7 +61,7 @@ async def insert_object(data=None):
 async def update_picpurify_frame_flags(data):
     # data = {'frame_no': '1', 'video_name': 'videoplayback.mp4', 'is_processed': 1}
     statement = text(
-        f"""UPDATE table_2 SET is_pic_purified=:is_pic_purified WHERE frame_no=:frame_no and video_name=:video_name"""
+        f"""UPDATE frames SET is_pic_purified=:is_pic_purified WHERE frame_no=:frame_no and video_name=:video_name"""
     )
     sess = SessionLocal()
     with sess.connection() as connection:
@@ -79,25 +78,18 @@ async def get_unprocessed_picpurify_frame_url(data):
     # data = {'id':152, 'video_id':1}
     sess = SessionLocal()
     with sess.connection() as con:
-        statement = text(
-            """SELECT * FROM table_2 WHERE id=:id and video_id=:video_id and is_pic_purified=0"""
-        )
+        statement = text("""SELECT * FROM frames WHERE id=:id and video_id=:video_id and is_pic_purified=0""")
 
         try:
             query_response = con.execute(statement, data)
             # results = query_response.fetchall()
-            results = [
-                {column: value for column, value in rowproxy.items()}
-                for rowproxy in query_response
-            ]
+            results = [{column: value for column, value in rowproxy.items()} for rowproxy in query_response]
             print("please wait inserting frames")
         except:
             print("db connection not build / insertion failed")
 
     bucket_name = "frames"
-    minio_client = Minio(
-        host, access_key=access_key, secret_key=secret_key, secure=False
-    )
+    minio_client = Minio(host, access_key=access_key, secret_key=secret_key, secure=False)
     found = minio_client.bucket_exists(bucket_name)
     if not found:
         minio_client.make_bucket(bucket_name)

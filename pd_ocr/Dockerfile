@@ -39,8 +39,12 @@ COPY requirements.txt .
 
 ENV CONDA_PACKAGES="-c anacondams pyodbc"
 
+
 RUN conda install $CONDA_PACKAGES
+
+RUN conda install -c anaconda nltk
 
 RUN pip install -r requirements.txt
 
-RUN /bin/sh -c python -m nltk.downloader punkt
+RUN /bin/sh -c python -m nltk.downloader 'punkt'
+

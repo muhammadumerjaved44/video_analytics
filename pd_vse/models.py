@@ -9,7 +9,7 @@ from database import SessionLocal, engine
 async def get_ocr_frames(db: Session):
     # data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'file_path':'umer'}
     with db.connection() as con:
-        statement = text("""SELECT * from table_2 WHERE is_ocr_processed=0""")
+        statement = text("""SELECT * from frames WHERE is_ocr_processed=0""")
 
         try:
             query_response = con.execute(statement)
@@ -23,8 +23,9 @@ async def get_ocr_frames(db: Session):
 
 async def get_detectron_frames(db: Session):
     # data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'file_path':'umer'}
+    data = None
     with db.connection() as con:
-        statement = text("""SELECT * from table_2 WHERE is_processed=0""")
+        statement = text("""SELECT * from frames WHERE is_processed=0""")
 
         try:
             query_response = con.execute(statement)
@@ -38,8 +39,9 @@ async def get_detectron_frames(db: Session):
 
 async def get_picpurify_frames(db: Session):
     # data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'file_path':'umer'}
+    data = None
     with db.connection() as con:
-        statement = text("""SELECT * from table_2 WHERE is_pic_purified=0""")
+        statement = text("""SELECT * from frames WHERE is_pic_purified=0""")
 
         try:
             query_response = con.execute(statement)
@@ -53,8 +55,9 @@ async def get_picpurify_frames(db: Session):
 
 async def get_qr_frames(db):
     # data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'file_path':'umer'}
+    data = None
     with db.connection() as con:
-        statement = text("""SELECT * from table_2 WHERE is_qr_processed=0""")
+        statement = text("""SELECT * from frames WHERE is_qr_processed=0""")
 
         try:
             query_response = con.execute(statement)
@@ -68,8 +71,9 @@ async def get_qr_frames(db):
 
 async def get_predictions(db: Session):
     # data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'file_path':'umer'}
+    data = None
     with db.connection() as con:
-        statement = text("""SELECT * from table_1""")
+        statement = text("""SELECT * from frame_data""")
 
         try:
             results = con.execute(statement)
@@ -83,8 +87,9 @@ async def get_predictions(db: Session):
 
 async def get_counts(db: Session):
     # data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'file_path':'umer'}
+    data = None
     with db.connection() as con:
-        statement = text("""SELECT count(*) from table_1""")
+        statement = text("""SELECT count(*) from frame_data""")
 
         try:
             results = con.execute(statement)
@@ -104,7 +109,7 @@ async def insert_object(db: Session, data=None):
     # data = {'frame_no':0, 'frame_id':44820, 'video_id':12, 'video_name':'Bad_fire.mp4', 'object_':'object_', 'attribute_':'attribute_', 'value_': 'value_'}
 
     statement = text(
-        """INSERT INTO table_1 (frame_no, frame_id, video_id, video_name, object_, attribute_, value_) \
+        """INSERT INTO frame_data (frame_no, frame_id, video_id, video_name, object_, attribute_, value_) \
         VALUES (:frame_no, :frame_id, :video_id, :video_name, :object_, :attribute_, :value_)"""
     )
 
@@ -123,8 +128,9 @@ async def insert_object(db: Session, data=None):
 
 async def check_in_progress_videos():
     sess = SessionLocal()
+    is_in_progress = None
     with sess.connection() as con:
-        statement = text("""SELECT TOP(1) * FROM table_3 WHERE is_in_progress=1""")
+        statement = text("""SELECT TOP(1) * FROM videos WHERE is_in_progress=1""")
         try:
             results = con.execute(statement)
             data = results.fetchall()

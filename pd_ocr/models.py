@@ -47,7 +47,7 @@ async def insert_object(data=None):
     print(data)
 
     statement = text(
-        """INSERT INTO table_1 (frame_id, frame_no, video_id, video_name, object_, attribute_, value_) \
+        """INSERT INTO frame_data (frame_id, frame_no, video_id, video_name, object_, attribute_, value_) \
         VALUES (:frame_id, :frame_no, :video_id, :video_name, :object_, :attribute_, :value_)"""
     )
 
@@ -67,7 +67,7 @@ async def insert_object(data=None):
 async def update_frame_flags(data):
     # data = {'frame_no': '1', 'video_name': 'videoplayback.mp4', 'is_processed': 1}
     statement = text(
-        """UPDATE table_2 SET is_ocr_processed=:is_ocr_processed WHERE frame_no=:frame_no and video_name=:video_name"""
+        """UPDATE frames SET is_ocr_processed=:is_ocr_processed WHERE frame_no=:frame_no and video_name=:video_name"""
     )
     sess = SessionLocal()
     with sess.connection() as connection:
@@ -84,7 +84,7 @@ async def get_unprocessed_ocr_frame_url(data):
     # data = {'id':152, 'video_id':1}
     sess = SessionLocal()
     with sess.connection() as con:
-        statement = text("""SELECT * FROM table_2 WHERE id=:id and  video_id=:video_id and is_ocr_processed=0""")
+        statement = text("""SELECT * FROM frames WHERE id=:id and  video_id=:video_id and is_ocr_processed=0""")
 
         try:
             query_response = con.execute(statement, data)

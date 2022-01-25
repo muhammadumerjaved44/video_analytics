@@ -3,9 +3,9 @@ from pathlib import Path
 
 import uvicorn
 from decouple import config
-from easyocr import Reader
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.openapi.utils import get_openapi
+
 from models import get_unprocessed_ocr_frame_url
 from ocr import (
     basic_post_processing,
@@ -20,13 +20,17 @@ base_path = os.path.dirname(os.path.abspath(__file__))
 
 app = FastAPI()
 
-if not config("DOCKER_ENABLE", cast=bool):
-    print("running from gpu")
-    langs = ["en"]
-    reader = Reader(langs, gpu=True)
-else:
-    langs = ["en"]
-    reader = Reader(langs)
+
+# @app.on_event("startup")
+# async def startup_event():
+#     global reader
+#     langs = ["en"]
+#     reader = Reader(
+#         langs,
+#         gpu=config("DOCKER_GPU_ENABLE", cast=bool),
+#         model_storage_directory=os.path.join(base_path, "easyocr_model"),
+#         download_enabled=False,
+#     )
 
 
 @app.post("/local", status_code=200)
@@ -39,21 +43,15 @@ async def get_local_text(image_path: str):
     else:
         main_file_path = os.path.realpath(os.path.basename(r"%s" % image_path))
         if not os.path.exists(main_file_path):
-            raise HTTPException(
-                status_code=404, detail="image path is invalid / local file not found"
-            )
+            raise HTTPException(status_code=404, detail="image path is invalid / local file not found")
         try:
-            simple_ouput_text = easyocr_read(main_file_path, reader)
+            simple_ouput_text = easyocr_read(main_file_path, reader=None)
             if len(simple_ouput_text) > 0:
                 pass
             else:
-                raise HTTPException(
-                    status_code=404, detail="text on an image not found"
-                )
+                raise HTTPException(status_code=404, detail="text on an image not found")
         except FileNotFoundError:
-            raise HTTPException(
-                status_code=404, detail="image path is invalid / local file not found"
-            )
+            raise HTTPException(status_code=404, detail="image path is invalid / local file not found")
 
         # post correction
         basic_correction = basic_post_processing(simple_ouput_text)
@@ -81,11 +79,9 @@ async def get_online_text(background_tasks: BackgroundTasks, request: Request):
     image_path = await get_unprocessed_ocr_frame_url(data)
     try:
         if not image_path or len(image_path.strip()) == 0:
-            raise HTTPException(
-                status_code=400, detail="image path is invalid or empty"
-            )
+            raise HTTPException(status_code=400, detail="image path is invalid or empty")
         else:
-            background_tasks.add_task(main_ocr, image_path, frame_id, video_id)
+            background_tasks.add_task(main_ocr, image_path, frame_id, video_id, reader=None)
 
             return {
                 "response": "soon the predictions will be compeleted",
@@ -104,9 +100,7 @@ def custom_openapi():
         description="The realtime image OCR api",
         routes=app.routes,
     )
-    openapi_schema["info"]["x-logo"] = {
-        "url": "https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png"
-    }
+    openapi_schema["info"]["x-logo"] = {"url": "https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png"}
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 

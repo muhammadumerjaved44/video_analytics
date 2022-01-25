@@ -1,6 +1,7 @@
 import asyncio
 import gc
 import glob
+import os
 import random
 import re
 import string
@@ -13,56 +14,47 @@ import requests
 import torch
 from decouple import config
 from easyocr import Reader
-from models import fetch_image_from_url, insert_object, update_frame_flags
 from nltk import word_tokenize
 from PIL import Image
-from spell_correction import correction
 from textblob import TextBlob
 
-gc.collect()
-torch.cuda.empty_cache()
+from models import fetch_image_from_url, insert_object, update_frame_flags
+from spell_correction import correction
 
+base_path = os.path.dirname(os.path.abspath(__file__))
 
-if not config("DOCKER_ENABLE", cast=bool):
-    print("running from gpu")
-    langs = ["en"]
-    reader = Reader(langs, gpu=True)
-else:
-    langs = ["en"]
-    reader = Reader(langs)
+# gc.collect()
+# torch.cuda.empty_cache()
+
 
 time_list = []
+# def timeit(func):
+#     async def process(func, *args, **params):
+#         if asyncio.iscoroutinefunction(func):
+#             print("this function is a coroutine: {}".format(func.__name__))
+#             return await func(*args, **params)
+#         else:
+#             print("this is not a coroutine")
+#             return func(*args, **params)
 
+#     async def helper(*args, **params):
+#         print("{}.time".format(func.__name__))
+#         start = time.time()
+#         result = await process(func, *args, **params)
 
-def timeit(func):
-    async def process(func, *args, **params):
-        if asyncio.iscoroutinefunction(func):
-            print("this function is a coroutine: {}".format(func.__name__))
-            return await func(*args, **params)
-        else:
-            print("this is not a coroutine")
-            return func(*args, **params)
+#         # Test normal function route...
+#         # result = await process(lambda *a, **p: print(*a, **p), *args, **params)
+#         final_time = time.time() - start
+#         async with aiofiles.open("time_data.txt", mode="a") as f:
+#             await f.write(f"\n{final_time},")
+#         print(
+#             "\n\n\nTotal execution time for this function = {} >>>".format(func.__name__),
+#             final_time,
+#             "\n\n\n",
+#         )
+#         return result, final_time
 
-    async def helper(*args, **params):
-        print("{}.time".format(func.__name__))
-        start = time.time()
-        result = await process(func, *args, **params)
-
-        # Test normal function route...
-        # result = await process(lambda *a, **p: print(*a, **p), *args, **params)
-        final_time = time.time() - start
-        async with aiofiles.open("time_data.txt", mode="a") as f:
-            await f.write(f"\n{final_time},")
-        print(
-            "\n\n\nTotal execution time for this function = {} >>>".format(
-                func.__name__
-            ),
-            final_time,
-            "\n\n\n",
-        )
-        return result, final_time
-
-    return helper
+#     return helper
 
 
 async def insert_text_object(
@@ -104,9 +96,7 @@ def random_string(N=6) -> str:
         str: resturn 6 letters random string
     """
 
-    return "".join(
-        random.choice(string.ascii_uppercase + string.digits) for _ in range(N)
-    )
+    return "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(N))
 
 
 async def deepstack_image_discription(image_path: str) -> str:
@@ -120,9 +110,7 @@ async def deepstack_image_discription(image_path: str) -> str:
     """
 
     image_data = open(image_path, "rb").read()
-    response = requests.post(
-        "http://localhost:5123/v1/vision/scene", files={"image": image_data}
-    ).json()
+    response = requests.post("http://localhost:5123/v1/vision/scene", files={"image": image_data}).json()
     # print("Label:",response["label"])
     # print(response)
 
@@ -203,15 +191,14 @@ async def word_base_post_processing(results: list) -> str:
     results_data = await basic_post_processing(results)
     word_list = word_tokenize(results_data)
     correct_phrase_list = [correction(x) for x in word_list]
-    word_based_correction = (
-        " ".join(correct_phrase_list).replace("/", "").replace("\\", "").lower()
-    )
+    word_based_correction = " ".join(correct_phrase_list).replace("/", "").replace("\\", "").lower()
 
     return word_based_correction
 
 
-async def easyocr_read(file: str, reader: object) -> str:
-    """easy ocr text recogination
+async def easyocr_read(file, reader):
+    """
+    easy ocr text recogination
 
     Args:
         file (str): required the open image in byte/file path
@@ -221,42 +208,39 @@ async def easyocr_read(file: str, reader: object) -> str:
         str: extracted text from the image
     """
 
+    print("enter into reading mode")
+    reader = Reader(
+        ["en"],
+        gpu=config("DOCKER_GPU_ENABLE", cast=bool),
+        model_storage_directory=os.path.join(base_path, "easyocr_model"),
+        download_enabled=False,
+    )
+    print(reader, file)
     results = reader.readtext(file)
-    if not (results) or not len(results) > 0:
+    print("printing resutls", results)
+    if not results:
         print("text not found", results)
         return results
-        # raise HTTPException(status_code=200, detail="no text found on the image")
-        # img = Image.open(image_path)
-        # img.save('image_text/text_not_found'+random_string()+'.jpg')
     else:
         results = sorted(results, key=lambda x: x[0][0])
+        print("umer is good", results, "\n")
         text_results = [x[-2] for x in results]  # get text
-        easy_output = (
-            " ".join(text_results).replace("/", "").replace("\\", "").lower()
-        )  # join together
+        easy_output = " ".join(text_results).replace("/", "").replace("\\", "").lower()  # join together
         easy_output = easy_output.strip()  # clean up spaces
         simple_ouput_text = re.sub("\s{2,}", " ", easy_output)  # clean up spaces
 
         return simple_ouput_text
 
 
-async def all_processing(text, frame_no, video_name):
-
-    result = {frame_no, video_name}
-
-
-@timeit
-async def main_ocr(main_file_url, frame_id, video_id):
+# @timeit
+async def main_ocr(main_file_url, frame_id, video_id, reader):
     frame_no = urlparse(main_file_url).path.split("_")[-1].split(".")[0]
     video_name = urlparse(main_file_url).path.split("/")[-2]
-    image = await asyncio.gather(
-        asyncio.create_task(fetch_image_from_url(video_name, frame_no))
-    )
+    image = await asyncio.gather(asyncio.create_task(fetch_image_from_url(video_name, frame_no)))
     print(image)
-    simple_ouput_text = await asyncio.gather(
-        asyncio.create_task(easyocr_read(image[0], reader))
-    )
-    if len(simple_ouput_text) > 0:
+    simple_ouput_text = await asyncio.gather(asyncio.create_task(easyocr_read(image[0], reader)))
+    print("simple output text ", simple_ouput_text)
+    if not simple_ouput_text[0]:
         simple_ouput_text = [""]
         simple_ouput_text_oprated = ["", "", ""]
     else:
@@ -279,8 +263,8 @@ async def main_ocr(main_file_url, frame_id, video_id):
             )
         )
     )
-    gc.collect()
-    torch.cuda.empty_cache()
+    # gc.collect()
+    # torch.cuda.empty_cache()
 
 
 if __name__ == "__main__":
@@ -324,13 +308,7 @@ if __name__ == "__main__":
 
         img = Image.open(image_path)
         try:
-            img.save(
-                "image_text/"
-                + simple_ouput_text
-                + " | "
-                + word_based_correction
-                + ".jpg"
-            )
+            img.save("image_text/" + simple_ouput_text + " | " + word_based_correction + ".jpg")
         except:
             print("file not saved")
 

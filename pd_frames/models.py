@@ -5,13 +5,14 @@ from io import BytesIO
 from pathlib import Path
 
 import cv2
-from database import Base, SessionLocal, engine
 from decouple import config
 from minio import Minio
 from minio.error import ServerError
 from PIL import Image
 from sqlalchemy import Table
 from sqlalchemy.sql import text
+
+from database import Base, SessionLocal, engine
 
 # minio keys setup
 host = config("MINIO_HOST", cast=str)
@@ -21,9 +22,7 @@ secret_key = config("MINIO_SECRET_KEY", cast=str)
 
 async def upload_video(video_file):
     bucket_name = "videos"
-    minio_client = Minio(
-        host, access_key=access_key, secret_key=secret_key, secure=False
-    )
+    minio_client = Minio(host, access_key=access_key, secret_key=secret_key, secure=False)
     found = minio_client.bucket_exists(bucket_name)
     if not found:
         minio_client.make_bucket(bucket_name)
@@ -31,9 +30,7 @@ async def upload_video(video_file):
         print("Bucket 'videos' already exists")
 
     try:
-        result = minio_client.fput_object(
-            bucket_name, Path(video_file).name, video_file
-        )
+        result = minio_client.fput_object(bucket_name, Path(video_file).name, video_file)
         video_url = minio_client.presigned_get_object(
             bucket_name, Path(video_file).name, expires=datetime.timedelta(hours=48)
         )
@@ -52,7 +49,7 @@ async def insert_video(data=None):
             # return
 
         statement = text(
-            """INSERT INTO table_3 (video_name, version_id, is_video_processed, is_in_progress, video_url)\
+            """INSERT INTO videos (video_name, version_id, is_video_processed, is_in_progress, video_url)\
             VALUES (:video_name, :version_id, :is_video_processed, :is_in_progress, :video_url)"""
         )
 
@@ -67,9 +64,7 @@ async def insert_video(data=None):
 
 async def upload_frames(video_name, frame, frame_no):
     bucket_name = "frames"
-    minio_client = Minio(
-        host, access_key=access_key, secret_key=secret_key, secure=False
-    )
+    minio_client = Minio(host, access_key=access_key, secret_key=secret_key, secure=False)
     found = minio_client.bucket_exists(bucket_name)
     if not found:
         minio_client.make_bucket(bucket_name)
@@ -88,9 +83,7 @@ async def upload_frames(video_name, frame, frame_no):
 
     try:
         frame_name_path = os.path.join(video_name, f"image_{frame_no}.jpg")
-        minio_client.put_object(
-            bucket_name, frame_name_path, frame_stream, frame_stream_size
-        )
+        minio_client.put_object(bucket_name, frame_name_path, frame_stream, frame_stream_size)
         image_url = minio_client.presigned_get_object(
             bucket_name, frame_name_path, expires=datetime.timedelta(hours=48)
         )
@@ -119,7 +112,7 @@ async def insert_frames(data=None):
         # id	video_id	frame_no	video_name	file_path	is_processed	is_ocr_processed
         statement = text(
             """INSERT INTO
-	            table_2 (video_id, frame_no, video_name, file_path, is_processed, is_ocr_processed, is_pic_purified, is_qr_processed)
+	            frames (video_id, frame_no, video_name, file_path, is_processed, is_ocr_processed, is_pic_purified, is_qr_processed)
             VALUES
                 (
                     :video_id, :frame_no, :video_name, :file_path, :is_processed, :is_ocr_processed, :is_pic_purified, :is_qr_processed
@@ -135,15 +128,12 @@ async def insert_frames(data=None):
         with sess.connection() as con:
             fetch_id_statement = text(
                 """
-                    SELECT Max(id) as id FROM table_2
+                    SELECT Max(id) as id FROM frames
                     """
             )
             try:
                 query_response = con.execute(fetch_id_statement)
-                id_data = [
-                    {column: value for column, value in rowproxy.items()}
-                    for rowproxy in query_response
-                ]
+                id_data = [{column: value for column, value in rowproxy.items()} for rowproxy in query_response]
             except:
                 print("insert id not found")
         return id_data[0]
@@ -152,16 +142,14 @@ async def insert_frames(data=None):
 async def get_videos():
     # data = { "frame_no": "The Hobbit", "video_name": "Tolkien", 'file_path':'umer', 'is_processed': 0}
     sess = SessionLocal()
+    data = None
     with sess.connection() as con:
-        statement = text("""SELECT TOP(1) * FROM table_3 WHERE is_video_processed=0""")
+        statement = text("""SELECT TOP(1) * FROM videos WHERE is_video_processed=0""")
 
         try:
             query_response = con.execute(statement)
             # data = results.fetchall()
-            data = [
-                {column: value for column, value in rowproxy.items()}
-                for rowproxy in query_response
-            ]
+            data = [{column: value for column, value in rowproxy.items()} for rowproxy in query_response]
             print("please getting unprocessed frames")
             # return True
         except:
@@ -171,9 +159,7 @@ async def get_videos():
     for record in data:
         print(record["id"])
         with sess.connection() as con:
-            statement_update = text(
-                """UPDATE table_3 SET is_in_progress=1 WHERE id=:id"""
-            )
+            statement_update = text("""UPDATE videos SET is_in_progress=1 WHERE id=:id""")
             try:
                 results = con.execute(statement_update, {"id": record["id"]})
                 print("please wait updating processed video frames")
@@ -193,7 +179,7 @@ async def update_progress_video_flag(data):
             # return
         # id	video_id	frame_no	video_name	file_path	is_processed	is_ocr_processed
         statement = text(
-            """UPDATE table_3 SET is_in_progress=:is_in_progress, is_video_processed=:is_video_processed  WHERE id=:id"""
+            """UPDATE videos SET is_in_progress=:is_in_progress, is_video_processed=:is_video_processed  WHERE id=:id"""
         )
 
         try:
@@ -209,7 +195,7 @@ async def update_progress_video_flag(data):
 async def check_any_videos_left():
     sess = SessionLocal()
     with sess.connection() as con:
-        statement = text("""SELECT TOP(1) * FROM table_3 WHERE is_video_processed=0""")
+        statement = text("""SELECT TOP(1) * FROM videos WHERE is_video_processed=0""")
         try:
             results = con.execute(statement)
             data = results.fetchall()
@@ -228,7 +214,7 @@ async def check_any_videos_left():
 async def check_in_progress_videos():
     sess = SessionLocal()
     with sess.connection() as con:
-        statement = text("""SELECT TOP(1) * FROM table_3 WHERE is_in_progress=1""")
+        statement = text("""SELECT TOP(1) * FROM videos WHERE is_in_progress=1""")
         try:
             results = con.execute(statement)
             data = results.fetchall()
@@ -246,9 +232,7 @@ async def check_in_progress_videos():
 
 async def get_videos_as_object():
     bucket_name = "videos"
-    minio_client = Minio(
-        host, access_key=access_key, secret_key=secret_key, secure=False
-    )
+    minio_client = Minio(host, access_key=access_key, secret_key=secret_key, secure=False)
     found = minio_client.bucket_exists(bucket_name)
     if not found:
         minio_client.make_bucket(bucket_name)
@@ -276,23 +260,18 @@ async def get_unprocessed_videos_urls(video_id):
     data = {"id": video_id}
     sess = SessionLocal()
     with sess.connection() as con:
-        statement = text("""SELECT * FROM table_3 WHERE id=:id""")
+        statement = text("""SELECT * FROM videos WHERE id=:id""")
 
         try:
             query_response = con.execute(statement, data)
             # results = query_response.fetchall()res
-            results = [
-                {column: value for column, value in rowproxy.items()}
-                for rowproxy in query_response
-            ]
+            results = [{column: value for column, value in rowproxy.items()} for rowproxy in query_response]
             print("please wait inserting frames")
         except:
             print("db connection not build / insertion failed")
 
     bucket_name = "videos"
-    minio_client = Minio(
-        host, access_key=access_key, secret_key=secret_key, secure=False
-    )
+    minio_client = Minio(host, access_key=access_key, secret_key=secret_key, secure=False)
     found = minio_client.bucket_exists(bucket_name)
     if not found:
         minio_client.make_bucket(bucket_name)

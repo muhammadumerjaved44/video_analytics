@@ -77,20 +77,14 @@ async def get_decord_frames_local(
         try:
             wget.download(video_path, full_path)
         except:
-            raise HTTPException(
-                status_code=404, detail="link not working on server or expire"
-            )
+            raise HTTPException(status_code=404, detail="link not working on server or expire")
 
     video_path = video_path.strip()
     if not video_path or len(video_path) == 0:
-        raise HTTPException(
-            status_code=404, detail="video file path is invalid or empty"
-        )
+        raise HTTPException(status_code=404, detail="video file path is invalid or empty")
     else:
         # late we use minio folder to download videos
-        main_file_path = os.path.realpath(
-            "video_download/" + ntpath.basename(r"%s" % video_path)
-        )
+        main_file_path = os.path.realpath("video_download/" + ntpath.basename(r"%s" % video_path))
         if not os.path.exists(main_file_path):
             raise HTTPException(
                 status_code=404,
@@ -136,17 +130,11 @@ async def get_decord_frames_online(
         try:
             wget.download(video_path, full_path)
         except:
-            raise HTTPException(
-                status_code=404, detail="link not working on server or expire"
-            )
+            raise HTTPException(status_code=404, detail="link not working on server or expire")
     try:
-        background_tasks.add_task(
-            video_to_frames, video_path, video_id, overwrite, every
-        )
+        background_tasks.add_task(video_to_frames, video_path, video_id, overwrite, every)
     except FileNotFoundError:
-        raise HTTPException(
-            status_code=404, detail="video file path is invalid / local file not found"
-        )
+        raise HTTPException(status_code=404, detail="video file path is invalid / local file not found")
 
     return {
         "response": "soon the video will be processed",
@@ -212,7 +200,7 @@ async def copyfile_into_local_folder(video_file_list, dir_name):
     return file_location_list
 
 
-@app.post("/upload_decord_files", tags=["Uplaod decord"])
+@app.post("/upload_decord_files", tags=["Uplaod decord"], status_code=201)
 async def upload_decord_files_and_get_frames(
     skip_frame: int,
     video_file_list: List[UploadFile] = File(...),
@@ -255,6 +243,10 @@ async def upload_decord_files_and_get_frames(
     for file_location in file_location_list:
         print("mian file path ", os.path.relpath(file_location))
         video_url, version_id = await upload_video(os.path.relpath(file_location))
+        if not version_id:
+            raise HTTPException(
+                status_code=501, detail="Not Implemented, Please configure the Minio versioning manually"
+            )
         print("video url  ", video_url)
 
         data = {
@@ -349,9 +341,7 @@ def custom_openapi():
         description=description,
         routes=app.routes,
     )
-    openapi_schema["info"]["x-logo"] = {
-        "url": "https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png"
-    }
+    openapi_schema["info"]["x-logo"] = {"url": "https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png"}
     app.openapi_schema = openapi_schema
     app.openapi_tags = tags_metadata
     return app.openapi_schema
