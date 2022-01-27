@@ -1,0 +1,17 @@
+selenium
+wget
+fastapi
+fastapi-sqlalchemy
+SQLAlchemy
+uvicorn[standard]
+bs4
+python-decouple
+lxml
+behave
+yml
+opencv-python
+cython
+aiofiles
+pathlib
+minio
+Pillow
