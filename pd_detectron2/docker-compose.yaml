@@ -4,8 +4,8 @@ version: '2.3'
 services:
 
   # detectron2 container configuration
-  pd-detectron2:
-    container_name: pd-detectron2
+  pd_detectron2:
+    container_name: pd_detectron2
     # image:
     build: .
     stdin_open: true

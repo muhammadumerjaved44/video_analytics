@@ -2,15 +2,17 @@ version: '3.0'
 
 # list of services in the Docker
 services:
-  adminer:
+  pd_adminer:
+    container_name: pd_adminer
     image: adminer
     restart: always
     depends_on:
-      - point-duty-mssql
+      - point_duty_mssql
     ports:
       - "${ADMINER_LOCAL_PORT}:${ADMINER_DOCKER_PORT}"
 
-  point-duty-mssql:
+  point_duty_mssql:
+    container_name: point_duty_mssql
     build: .
     image: mcmoe/mssqldocker:v2017.CU24.0
     environment:
@@ -21,16 +23,3 @@ services:
       MSSQL_PASSWORD: ${MSSQL_ROOT_PASSWORD}
     ports:
       - "${MSSQL_LOCAL_PORT}:${MSSQL_DOCKER_PORT}"
-    container_name: point-duty-mssql
-
-  #service for cache
-  point-duty-redis:
-    container_name: point-duty-redis
-    restart: always
-    image: redis:latest
-    ports:
-      - ${REDIS_LOCAL_PORT}:${REDIS_DOCKER_PORT}
-    volumes:
-      - redisdata:/data
-volumes:
-  redisdata:

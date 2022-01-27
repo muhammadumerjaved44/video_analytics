@@ -4,8 +4,8 @@ version: '3.0'
 services:
 
   # detectron2 container configuration
-  pd-frames:
-    container_name: pd-frames
+  pd_frames:
+    container_name: pd_frames
     # image:
     build: .
     stdin_open: true

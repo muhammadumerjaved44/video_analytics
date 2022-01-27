@@ -9,16 +9,17 @@ import aiohttp
 from asgiref.sync import async_to_sync
 from celery import Celery
 from celery.schedules import crontab
-from database import SessionLocal, engine
 from decouple import config
 from fastapi import BackgroundTasks, Depends
+from sqlalchemy.orm import Session
+
+from database import SessionLocal, engine
 from models import (
     get_detectron_frames,
     get_ocr_frames,
     get_picpurify_frames,
     get_qr_frames,
 )
-from sqlalchemy.orm import Session
 
 celery = Celery(__name__)
 celery.conf.broker_url = config("CELERY_BROKER_URL")
@@ -63,7 +64,7 @@ async def call_back_ocr():
                 await session.post(
                     api_end_point, json={"frame_id": frame_id, "video_id": video_id}
                 )
-        await session.close()
+        # await session.close()
 
     await make_api_asyc_call()
     return results

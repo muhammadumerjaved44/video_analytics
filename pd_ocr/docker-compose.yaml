@@ -4,8 +4,8 @@ version: '2.4'
 services:
 
   # python container configuration
-  point-duty-python:
-    container_name: point-duty-python
+  point_duty_ocr:
+    container_name: point_duty_ocr
     # image:
     build: .
     stdin_open: true
@@ -17,9 +17,9 @@ services:
     ports:
       - ${FASTAPI_LOCAL_PORT}:${FASTAPI_DOCKER_PORT}
     depends_on:
-      - point-duty-deepstack
+      - point_duty_deepstack
     runtime: nvidia
-    shm_size: "3gb"
+    shm_size: "4gb"
 
     environment:
       # python env
@@ -27,8 +27,8 @@ services:
       NVIDIA_VISIBLE_DEVICES: all
 
   # point-duty-deepstack service
-  point-duty-deepstack:
-    container_name: point-duty-deepstack
+  point_duty_deepstack:
+    container_name: point_duty_deepstack
     image: deepquestai/deepstack
     # build: .
     ports:

@@ -4,8 +4,8 @@ version: '3.0'
 services:
 
   # vid_search_engin container configuration
-  pd-vid_search_engin:
-    container_name: pd-vid_search_engin
+  pd_vid_search_engin:
+    container_name: pd_vid_search_engin
     # image:
     build: .
     stdin_open: true
@@ -38,7 +38,7 @@ services:
       - CELERY_BROKER_URL=${CELERY_BROKER_URL}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
     depends_on:
-      - pd-vid_search_engin
+      - pd_vid_search_engin
       - redis
     links:
       - redis
@@ -57,7 +57,7 @@ services:
   #   - celery_worker
   #   - redis
   #   depends_on:
-  #   - pd-vid_search_engin
+  #   - pd_vid_search_engin
   #   - celery_worker
   #   - redis
 
@@ -73,16 +73,16 @@ services:
       - CELERY_BROKER_URL=${CELERY_BROKER_URL}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
     # depends_on:
-    #   - pd-vid_search_engin
+    #   - pd_vid_search_engin
     #   - redis
     #   - celery_worker
     links:
       - redis
       - celery_worker
-      - pd-vid_search_engin
+      - pd_vid_search_engin
     # - celery_beat_worker
     depends_on:
-      - pd-vid_search_engin
+      - pd_vid_search_engin
       - redis
       - celery_worker
     # - celery_beat_worker
