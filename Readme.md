@@ -1,4 +1,4 @@
-﻿# Welcome to Point Duty ***Analytics Procject***
+﻿# Welcome to ***Analytics Procject***
 This project Containes the three APIs which are as follows
 * **Frames API**
 * **Detectron API**
